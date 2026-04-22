@@ -55,3 +55,262 @@
   margin: 0;
   font-style: italic;
 }
+
+.auth-button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.auth-btn {
+  width: 100%;
+  padding: 14px 20px;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 1.1rem;
+  border-radius: 50px; /* Rounded pill shape looks more modern */
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.google-btn {
+  background-color: white;
+  color: #555;
+  border: 1px solid #ddd;
+}
+
+.google-btn:hover {
+  background-color: #f9f9f9;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+.btn-icon {
+  margin-right: 12px;
+  font-weight: bold;
+  color: #4285F4;
+}
+
+.email-btn {
+  background-color: #333; /* Dark gray for contrast */
+  color: white;
+}
+
+.email-btn:hover {
+  background-color: #000;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Make the logo slightly smaller for the auth screen */
+.logo-circle.small {
+  width: 140px;
+  height: 140px;
+  margin-bottom: 50px;
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 300px;
+}
+
+.auth-input {
+  padding: 12px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.9);
+  font-family: "Times New Roman", Times, serif;
+  font-size: 1rem;
+}
+
+.register-title {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: white;
+}
+
+.back-link {
+  margin-top: 15px;
+  color: white;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.fade-in {
+  animation: fadeIn 1s ease-in;
+}
+
+/* --- Home Page Styles --- */
+.home-page {
+  background-color: white;
+  min-height: 100vh;
+  width: 100vw;
+  font-family: "Times New Roman", Times, serif;
+}
+
+.home-header {
+  background-color: #7b2cbf;
+  color: white;
+  font-size: 2.5rem;
+  padding: 15px 20px;
+  text-align: left;
+}
+
+.home-content {
+  padding: 20px;
+  padding-bottom: 100px; /* Space for bottom nav */
+}
+
+/* Category Grid */
+.category-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.cat-box {
+  width: 100px;
+  height: 80px;
+  border-radius: 15px;
+  border: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.red { background-color: #ffcccc; }
+.orange { background-color: #ffe5cc; }
+.yellow { background-color: #ffffcc; }
+.green { background-color: #ccffcc; }
+.blue { background-color: #cce5ff; }
+
+/* Search bar */
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: #f0e6ff;
+  border: 1.5px solid #b066e3;
+  border-radius: 25px;
+  padding: 8px 20px;
+  margin-bottom: 10px;
+}
+
+.search-bar input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+}
+
+.search-history {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.search-history span {
+  background: #f8f0ff;
+  border: 1px solid #e0aaff;
+  border-radius: 10px;
+  padding: 4px 12px;
+  font-size: 0.7rem;
+}
+
+/* AI Recommendation Box */
+.ai-recommendation {
+  background-color: #ebd9ff;
+  border: 1px solid #7b2cbf;
+  border-radius: 20px;
+  padding: 20px;
+  text-align: left;
+  margin-bottom: 30px;
+}
+
+.ai-recommendation h3 { margin: 0; font-size: 1.2rem; }
+.ai-recommendation p { margin: 10px 0; }
+.more-link { font-size: 0.8rem; float: right; }
+
+/* Horizontal Scrolling */
+.scroll-row {
+  display: flex;
+  gap: 15px;
+  overflow-x: auto;
+  padding: 10px 0;
+}
+
+.image-card {
+  min-width: 120px;
+  height: 140px;
+  border-radius: 20px;
+  position: relative; 
+  overflow: hidden;    
+}
+
+.yellow-light { background-color: #fffde0; border-color: #f7e600; }
+.orange-light { background-color: #fff3e0; border-color: #ffa500; position: relative; }
+
+/* Navigation Bar */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  width: 100vw;
+  background-color: #f3e5ff;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px 0 25px 0;
+  border-top: 1px solid #ddd;
+}
+
+.nav-icon { color: #555; cursor: pointer; }
+.nav-icon.active { color: #7b2cbf; }
+
+.ai-floating-btn {
+  width: 60px;
+  height: 60px;
+  background: white;
+  border: 2px solid #2d31fa;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-top: -40px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.chatbot-circle {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 40px;
+  height: 40px;
+  background: white;
+  border: 1px solid #333;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pb-100 { padding-bottom: 100px; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

@@ -1,7 +1,7 @@
-// src/firebase.ts
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage"; // 1. Import Storage
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -13,9 +13,13 @@ const firebaseConfig = {
   measurementId: "G-50B899Y46W"
 };
 
-// Initialize Firebase
+if (!firebaseConfig.apiKey) {
+  console.warn("Firebase API Key is missing! Check your .env file and restart your terminal.");
+}
+
 const app = initializeApp(firebaseConfig);
 
-// Export services so you can use them in your pages
+// Export services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app); 
