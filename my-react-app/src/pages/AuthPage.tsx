@@ -29,9 +29,21 @@ export const AuthPage = ({ onGoogle, onEmailClick, onRegister, view, setView, se
     <div className="landing-container fade-in">
       <div className="content-wrapper">
         <h2 className="register-title">Create Account</h2>
-        <form className="register-form" onSubmit={onRegister}>
-          <input type="email" placeholder="Email" className="auth-input" onChange={(e) => setEmail(e.target.value)} required />
-          <input type="password" placeholder="Password" className="auth-input" onChange={(e) => setPassword(e.target.value)} required />
+        <form className="register-form" onSubmit={onRegister}> {/* This triggers the duplicate check */}
+          <input 
+            type="email" 
+            placeholder="Email" 
+            className="auth-input" 
+            onChange={(e) => setEmail(e.target.value)} 
+            required 
+          />
+          <input 
+            type="password" 
+            placeholder="Password" 
+            className="auth-input" 
+            onChange={(e) => setPassword(e.target.value)} 
+            required 
+          />
           <button type="submit" className="auth-btn email-btn">Sign Up</button>
           <p className="back-link" onClick={() => setView('auth')}>← Back</p>
         </form>
