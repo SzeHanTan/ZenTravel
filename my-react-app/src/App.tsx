@@ -1,24 +1,35 @@
-import { useState, useEffect } from 'react'
-import { auth } from './services/firebase'
-import { onAuthStateChanged } from 'firebase/auth'
+import { useState, useEffect } from 'react';
+import { auth } from './services/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
-// 保留队友的 import (authService)
-import { registerUser, loginWithGoogle } from './services/authService'
+// Services
+import { registerUser, loginWithGoogle } from './services/authService';
 
-// 引入所有页面，包括你新增的 ProfilePage
-import { LandingPage } from './pages/LandingPage'
-import { AuthPage } from './pages/AuthPage'
-import { HomePage } from './pages/HomePage'
-import { ProfilePage } from './pages/ProfilePage'
+// Pages
+import { LandingPage } from './pages/LandingPage';
+import { AuthPage } from './pages/AuthPage';
+import { HomePage } from './pages/HomePage';
+import { ProfilePage } from './pages/ProfilePage';
+import { ChatbotPage } from './pages/ChatbotPage';
+import { BookingPage } from './pages/BookingPage';
+import { NotificationPage } from './pages/NotificationPage';
+
+// Components
+import { BottomNav } from './components/BottomNav';
+
+// Global Styles
+import './App.css';
+
+// Define the available views for TypeScript
+type ViewState = 'landing' | 'auth' | 'register' | 'home' | 'profile' | 'chatbot' | 'booking' | 'notification';
 
 function App() {
-  // 视图状态：保留了 profile
-  const [view, setView] = useState<'landing' | 'auth' | 'register' | 'home' | 'profile'>('landing');
+  const [view, setView] = useState<ViewState>('landing');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [user, setUser] = useState<any>(null);
 
-  // 监听 Firebase 登录状态
+  // 1. Session Persistence: Check if user is already logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -26,7 +37,7 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  // Landing 页自动跳转逻辑
+  // 2. Landing Timer: Transitions to Home (if logged in) or Auth (if guest)
   useEffect(() => {
     if (view === 'landing') {
       const timer = setTimeout(() => {
@@ -40,7 +51,7 @@ function App() {
     }
   }, [view, user]);
 
-  // 保留队友的注册逻辑 (使用 registerUser)
+  // 3. Auth Handlers
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -55,7 +66,6 @@ function App() {
     }
   };
 
-  // 保留队友的 Google 登录逻辑 (使用 loginWithGoogle)
   const handleGoogle = async () => {
     try {
       await loginWithGoogle();
@@ -65,12 +75,16 @@ function App() {
     }
   };
 
+  // 4. Helper: Should we show the Bottom Navigation bar?
+  const authenticatedViews: ViewState[] = ['home', 'profile', 'chatbot', 'booking', 'notification'];
+  const showNavBar = authenticatedViews.includes(view);
+
   return (
     <div className="app-container">
-      {/* 1. 启动页 */}
+      
+      {/* Landing & Authentication Views */}
       {view === 'landing' && <LandingPage />}
       
-      {/* 2. 登录/注册页 */}
       {(view === 'auth' || view === 'register') && (
         <AuthPage 
           view={view}
@@ -83,13 +97,20 @@ function App() {
         />
       )}
 
-      {/* 3. 首页 */}
-      {view === 'home' && <HomePage setView={setView} />}
+      {/* Main App Content Area */}
+      <main className="main-content-area">
+        {view === 'home' && <HomePage setView={setView} />}
+        {view === 'profile' && <ProfilePage setView={setView} />}
+        {view === 'chatbot' && <ChatbotPage setView={setView} />}
+        {view === 'booking' && <BookingPage setView={setView} />}
+        {view === 'notification' && <NotificationPage setView={setView} />}
+      </main>
+
+      {/* Persistent Global Navigation */}
+      {showNavBar && <BottomNav currentView={view} setView={setView} />}
       
-      {/* 4. 你的 Profile 页面 (新增) */}
-      {view === 'profile' && <ProfilePage setView={setView} />}
     </div>
-  )
+  );
 }
 
 export default App;
