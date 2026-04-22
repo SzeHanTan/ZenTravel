@@ -1,18 +1,28 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import { auth, db } from './services/firebase'
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { onAuthStateChanged, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 
-// Import our new pages
 import { LandingPage } from './pages/LandingPage'
 import { AuthPage } from './pages/AuthPage'
 import { HomePage } from './pages/HomePage'
+import { ProfilePage } from './pages/ProfilePage'
 
 function App() {
-  const [view, setView] = useState<'landing' | 'auth' | 'register' | 'home'>('landing');
+  // 扩展视图状态，增加 'profile'
+  const [view, setView] = useState<'landing' | 'auth' | 'register' | 'home' | 'profile'>('landing');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [user, setUser] = useState<any>(null);
+
+  // 监听 Firebase 登录状态
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (view === 'landing') {
@@ -62,7 +72,10 @@ function App() {
         />
       )}
 
-      {view === 'home' && <HomePage />}
+      {/* 这里的 setView 传给页面，用于点击底部导航切换 */}
+      {view === 'home' && <HomePage setView={setView} />}
+      
+      {view === 'profile' && <ProfilePage setView={setView} />}
     </div>
   )
 }
