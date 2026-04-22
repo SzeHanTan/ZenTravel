@@ -5,7 +5,7 @@
   padding: 0;
 }
 
-body {
+body, html {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
@@ -31,6 +31,28 @@ body {
 
 .fade-in {
   animation: fadeIn 1s ease-in;
+}
+
+.persistent-chatbot-btn {
+  position: fixed;
+  bottom: 100px; /* Sits above the navigation bar */
+  right: 20px;
+  width: 55px;
+  height: 55px;
+  background-color: white;
+  border: 2px solid #7b2cbf;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  z-index: 999;
+  transition: transform 0.2s ease;
+}
+
+.persistent-chatbot-btn:hover {
+  transform: scale(1.1);
 }
 
 @keyframes fadeIn {

@@ -12,12 +12,38 @@ interface AuthProps {
 
 export const AuthPage = ({ onGoogle, onEmailClick, onRegister, view, setView, setEmail, setPassword }: AuthProps) => {
   return (
-    <div className="landing-container fade-in">
-      <div className="content-wrapper">
-        {/* Logo 部分：保留了你原来的圆圈结构 */}
-        <div className="logo-circle small" style={{ width: '140px', height: '140px', backgroundColor: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '40px', overflow: 'hidden' }}>
-          <img src={logo} style={{ width: '80%' }} alt="Logo" />
-        </div>
+    <div className="landing-container fade-in" style={{
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',      // Centers horizontally
+    justifyContent: 'center',     // Centers vertically
+    minHeight: '100vh',        // Full screen height
+    width: '100vw',            // Full screen width
+    margin: 0,
+    padding: 0
+  }}>
+    <div className="content-wrapper" style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',      // Forces children (circle, h1, p) to line up in the center
+      width: '100%'
+    }}>
+      
+      {/* Your Circle */}
+      <div className="logo-circle" style={{ 
+          width: '220px', 
+          height: '220px', 
+          backgroundColor: 'white', 
+          borderRadius: '50%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          marginBottom: '40px', 
+          overflow: 'hidden',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+      }}>
+          <img src={logo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      </div>
         
         {view === 'auth' ? (
           <div className="auth-button-group" style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '300px' }}>

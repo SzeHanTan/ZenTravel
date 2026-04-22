@@ -19,6 +19,7 @@ import { BottomNav } from './components/BottomNav';
 
 // Global Styles
 import './App.css';
+import { MessageCircle } from 'lucide-react';
 
 // Define the available views for TypeScript
 type ViewState = 'landing' | 'auth' | 'register' | 'home' | 'profile' | 'chatbot' | 'booking' | 'notification';
@@ -107,7 +108,16 @@ function App() {
       </main>
 
       {/* Persistent Global Navigation */}
-      {showNavBar && <BottomNav currentView={view} setView={setView} />}
+      {showNavBar && (
+        <>
+          {/* The actual floating bubble */}
+          <div className="persistent-chatbot-btn" onClick={() => setView('chatbot')}>
+            <MessageCircle color="#7b2cbf" />
+          </div>
+          
+          <BottomNav currentView={view} setView={setView} />
+        </>
+      )}
       
     </div>
   );
