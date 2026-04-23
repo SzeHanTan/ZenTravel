@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { db, auth } from '../services/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { ArrowLeft, Star } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import mascotImg from '../assets/MASCOT.png'; 
 import '../styles/MyReviews.css';
 

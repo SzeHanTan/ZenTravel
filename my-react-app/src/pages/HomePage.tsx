@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Home, Bell, Calendar, User, Search, X } from 'lucide-react'; 
+import { useState, useEffect } from 'react';
+import { Search, X } from 'lucide-react'; 
 import { db, auth } from '../services/firebase';
 import { 
   collection, 
@@ -28,7 +28,7 @@ interface HomeProps {
   globalCurrency: { name: string; code: string };
 }
 
-export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency }) => {
+export const HomePage = ({ setView, globalCurrency }: HomeProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false); 

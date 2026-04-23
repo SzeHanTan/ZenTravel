@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Calendar, X, Check } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, Calendar, X } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import "../styles/TripPlannerPage.css";
 
-export const TripPlannerPage: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
-  const [origin, setOrigin] = useState("Kuala Lumpur");
+export const TripPlannerPage = ({ setView }: { setView: (v: string) => void }) => {
+  const [origin] = useState("Kuala Lumpur");
   const [destination, setDestination] = useState("London");
-  const [dates, setDates] = useState({ start: "23/04/2026", end: "29/04/2026" });
+  const [dates] = useState({ start: "23/04/2026", end: "29/04/2026" });
   
   // --- UI Toggles ---
   const [showDateModal, setShowDateModal] = useState(false);

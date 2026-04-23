@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronLeft, Wallet, Gift, History, CircleDollarSign } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronLeft, Wallet, Gift, History } from 'lucide-react';
 import '../styles/Cashback.css';
 
 export const Cashback = ({ setLocalView, balance, setBalance, symbol }: any) => {
