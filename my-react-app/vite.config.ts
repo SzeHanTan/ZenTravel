@@ -4,6 +4,17 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      // Proxy /ilmu-api/* → https://api.ilmu.ai/* to avoid CORS in dev
+      '/ilmu-api': {
+        target: 'https://api.ilmu.ai',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ilmu-api/, ''),
+        secure: true,
+      },
+    },
+  },
   build: {
     rollupOptions: {
       output: {

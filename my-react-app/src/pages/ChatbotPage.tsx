@@ -1,26 +1,64 @@
 import React, { useState } from 'react';
 import '../App.css';
 import '../styles/ChatbotPage.css';
+import { runZenTravelWorkflow } from '../agents/workflowEngine';
 
 interface ChatbotPageProps {
-  setView: (v: any) => void;
+  setView: (v: string) => void;
 }
 
-export const ChatbotPage: React.FC<ChatbotPageProps> = () => {
+export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
   const [messages, setMessages] = useState<Array<{ text: string; sender: 'user' | 'ai' }>>([]);
   const [inputText, setInputText] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleSend = () => {
-    if (inputText.trim()) {
-      setMessages([...messages, { text: inputText, sender: 'user' }]);
-      setInputText('');
-      
-      setTimeout(() => {
-        setMessages(prev => [...prev, { 
-          text: 'Hello! I\'m ZenTravel AI. How can I help you with your travel needs today?', 
-          sender: 'ai' 
-        }]);
-      }, 1000);
+  const handleSend = async () => {
+    const payload = inputText.trim();
+    if (!payload) return;
+
+    setMessages((prev) => [...prev, { text: payload, sender: 'user' }]);
+    setInputText('');
+    setIsProcessing(true);
+
+    try {
+      const result = await runZenTravelWorkflow(payload);
+      const actionLines = result.plan?.actions.map(
+        (action) =>
+          `- ${action.agent.toUpperCase()}: ${action.status}${action.output ? ` (${action.output})` : ''}${
+            action.error ? ` [${action.error}]` : ''
+          }`,
+      );
+
+      const details = [
+        `Stage: ${result.stage}`,
+        `Disruption: ${result.incident.disruptionType}`,
+        `Summary: ${result.incident.summary}`,
+        `Reasoning: ${result.reasoning.join(' ')}`,
+        result.clarifyingQuestions.length > 0
+          ? `Need clarification: ${result.clarifyingQuestions.join(' ')}`
+          : 'No additional clarification required.',
+        actionLines && actionLines.length > 0 ? `Actions:\n${actionLines.join('\n')}` : 'No actions executed yet.',
+        `Outcome: ${result.finalMessage}`,
+      ];
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          text: details.join('\n\n'),
+          sender: 'ai',
+        },
+      ]);
+    } catch (error) {
+      const errorText = error instanceof Error ? error.message : 'Unknown failure';
+      setMessages((prev) => [
+        ...prev,
+        {
+          text: `Workflow engine error: ${errorText}. Please try again with more context (flight number, route, and disruption type).`,
+          sender: 'ai',
+        },
+      ]);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -57,21 +95,22 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = () => {
           </div>
 
           <div className="chat-input-container">
-            <input 
+            <input
               type="text" 
               className="chat-input"
-              placeholder="Type your message..."
+              placeholder="Describe disruption (e.g. Flight MH123 from KL to Tokyo was cancelled)"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+              onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
+              disabled={isProcessing}
             />
-            <button className="send-btn" onClick={handleSend}>
-              Send
+            <button className="send-btn" onClick={() => void handleSend()} disabled={isProcessing}>
+              {isProcessing ? 'Running...' : 'Send'}
             </button>
           </div>
 
-          <button className="chat-btn">
-            Chat with AI
+          <button className="chat-btn" onClick={() => setView('tripplanner')}>
+            Back to Trip Planner
           </button>
         </div>
 
