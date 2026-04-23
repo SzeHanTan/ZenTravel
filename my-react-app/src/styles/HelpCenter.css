@@ -1,0 +1,21 @@
+.help-container { background: #f8f9fd; min-height: 100vh; }
+.help-header { background: #fff; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
+.help-header h1 { font-size: 18px; margin: 0; color: #333; }
+
+.help-banner { background: #8600E0; color: white; padding: 20px; display: flex; align-items: center; justify-content: space-between; position: relative; overflow: hidden; }
+.banner-text h2 { font-size: 18px; margin: 0 0 10px 0; }
+.banner-text p { font-size: 12px; margin-bottom: 15px; opacity: 0.9; }
+.contact-btn { background: white; color: #8600E0; border: none; padding: 8px 15px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+.help-mascot { width: 140px; height: 120px; object-fit: contain; }
+
+.tab-switcher { display: flex; background: white; border-bottom: 1px solid #eee; }
+.tab-switcher button { flex: 1; padding: 12px; border: none; background: none; font-size: 14px; color: #666; cursor: pointer; }
+.tab-switcher button.active { color: #8a2be2; border-bottom: 2px solid #8a2be2; font-weight: bold; }
+
+.faq-section { padding: 20px; }
+.faq-section h3 { font-size: 16px; color: #333; margin-bottom: 15px; }
+.faq-item { background: white; border-radius: 10px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); cursor: pointer; }
+.faq-question { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #333; font-weight: 500; }
+.faq-answer { margin-top: 10px; font-size: 13px; color: #666; line-height: 1.5; border-top: 1px solid #f5f5f5; padding-top: 10px; }
+
+.clickable { cursor: pointer; }

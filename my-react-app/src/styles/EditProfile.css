@@ -1,0 +1,205 @@
+/* styles/EditProfile.css */
+
+.edit-profile-page-root {
+  background-color: #fff;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 统一紫色 Header 结构 */
+.zen-purple-header {
+  background-color: #8600E0;
+  color: white;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-centered-title {
+  font-size: 19px;
+  font-weight: bold;
+  margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.header-icon-left {
+  cursor: pointer;
+  width: 24px;
+}
+
+.header-save-btn {
+  background: white;
+  color: #8600E0;
+  border: none;
+  padding: 5px 15px;
+  border-radius: 15px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.header-save-btn:disabled {
+  background: rgba(255,255,255,0.5);
+  cursor: not-allowed;
+}
+
+.white-content-area {
+  flex: 1;
+  background-color: #fff;
+  padding: 20px;
+}
+
+/* 头像部分 */
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.avatar-wrapper {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.avatar-wrapper img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #f0f0f0;
+}
+
+.img-uploading {
+  opacity: 0.5;
+}
+
+.camera-icon-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: #8600E0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  cursor: pointer;
+}
+
+.upload-loader {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.2);
+  border-radius: 50%;
+}
+
+.spin {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.upload-status-text {
+  font-size: 12px;
+  color: #8600E0;
+  margin-top: 8px;
+}
+
+/* 表单样式 */
+.edit-form-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.input-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+}
+
+.input-group input {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.disabled-input {
+  background-color: #f8f8f8;
+  color: #999;
+  border-color: #eee !important;
+}
+
+/* 支付方式 */
+.payment-preference h3 {
+  font-size: 15px;
+  margin: 20px 0 12px;
+  color: #333;
+}
+
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.pay-card {
+  border: 1.5px solid #eee;
+  border-radius: 12px;
+  padding: 12px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.pay-card span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.pay-card.active {
+  border-color: #8600E0;
+  background: #f5edff;
+  color: #8600E0;
+}
+
+/* 底部吉祥物 */
+.edit-footer-mascot {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+  padding-bottom: 20px;
+  opacity: 0.3;
+}
+
+.edit-footer-mascot img {
+  width: 70px;
+}

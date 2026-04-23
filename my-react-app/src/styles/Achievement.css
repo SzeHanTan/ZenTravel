@@ -1,0 +1,49 @@
+.achievement-detail-body { padding: 20px; background: #fff; }
+.section-title { font-size: 18px; font-weight: bold; margin: 24px 0 16px; color: #333;}
+
+/* 核心：三排一排的 Grid */
+.agojis-grid { 
+  display: grid; 
+  grid-template-columns: repeat(3, 1fr); 
+  gap: 20px 15px; 
+}
+
+.agoji-card { text-align: center; cursor: pointer; transition: transform 0.2s; }
+.agoji-card:active { transform: scale(0.95); }
+
+.agoji-img-wrap { 
+  background: #f8f9fa; 
+  border-radius: 16px; 
+  padding: 12px; 
+  aspect-ratio: 1 / 1; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  border: 1px solid #f0f0f0;
+  position: relative;
+}
+
+.agoji-card.locked .agoji-img-wrap { background: #f2f2f2; border: 1px dashed #ccc; }
+
+.new-tag {
+  position: absolute; top: -5px; right: -5px;
+  background: #999; color: white; font-size: 9px;
+  padding: 2px 6px; border-radius: 4px;
+}
+
+.agoji-name { font-size: 14px; font-weight: 600; margin-top: 10px; color: #333;}
+.agoji-status { font-size: 12px; color: #999; }
+
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat-box { 
+  border: 1px solid #eee; padding: 20px 15px; border-radius: 15px; 
+  font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+
+/* 弹窗样式 */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+.zen-progress-modal { background: white; width: 80%; border-radius: 25px; padding: 30px; text-align: center; position: relative; }
+.modal-close { position: absolute; right: 15px; top: 15px; color: #999; cursor: pointer; }
+.progress-container { height: 8px; background: #eee; border-radius: 10px; margin: 20px 0 10px; overflow: hidden; }
+.progress-bar { height: 100%; background: #8A00E5; transition: width 0.5s ease; }
