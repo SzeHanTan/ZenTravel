@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowLeft, Globe, ShieldCheck, Zap } from 'lucide-react';
 import '../styles/AboutUs.css';
 

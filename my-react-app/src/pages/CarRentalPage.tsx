@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   ArrowLeft, Calendar, User, X, MapPin, 
-  PlaneTakeoff, Check, Minus, Plus 
+  PlaneTakeoff
 } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import "../styles/CarRentalPage.css";
 
-export const CarRentalPage: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
+export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => {
   // --- UI Navigation State ---
   const [mainTab, setMainTab] = useState('Rentals'); // 'Rentals' or 'Transfers'
   const [transferType, setTransferType] = useState('Pick-up'); // 'Pick-up' or 'Drop-off'

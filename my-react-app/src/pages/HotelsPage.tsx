@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Search, Calendar, User, ArrowLeft, X, Plus, Minus } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import "../styles/HotelsPage.css";
 
-export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
+export const HotelsPage = ({ setView }: { setView: (v: string) => void }) => {
   // --- Search States ---
   const [destination, setDestination] = useState("");
   const [startDate, setStartDate] = useState("2026-04-23");

@@ -1,4 +1,4 @@
-import { Home, Bell, Calendar, User, MessageCircle } from 'lucide-react';
+import { Home, Bell, Calendar, User } from 'lucide-react';
 import '../App.css';
 
 interface NavProps {

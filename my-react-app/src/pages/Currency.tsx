@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ChevronLeft, Check, Search } from 'lucide-react';
 import '../styles/Currency.css';
 
