@@ -1,75 +1,169 @@
-import { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ChevronLeft, Wallet, Gift, History } from 'lucide-react';
+import { db } from '../services/firebase'; 
+import { doc, updateDoc } from 'firebase/firestore'; 
+import { translations } from '../utils/translations';
 import '../styles/Cashback.css';
 
-export const Cashback = ({ setLocalView, balance, setBalance, symbol }: any) => {
+export const Cashback = ({ setLocalView, balance, setBalance, symbol, globalLang, bookings = [] }: any) => {
   const [isClaiming, setIsClaiming] = useState(false);
+  const t = translations[globalLang || 'en'];
 
-  // 模拟计算逻辑（非 Hardcode）
-  const handleClaim = () => {
+  // 1. 过滤出待领取的订单 (已完成且未领取)
+  const pendingOrders = useMemo(() => {
+    if (!bookings || !Array.isArray(bookings)) return [];
+    return bookings.filter((b: any) => b.status === 'past' && b.cashbackClaimed !== true);
+  }, [bookings]);
+
+  // 计算待领取总额
+  const totalPendingAmount = useMemo(() => {
+    return pendingOrders.reduce((sum: number, b: any) => {
+      const amount = Number(b.cashbackAmount) || (Number(b.price) * 0.05) || 0;
+      return sum + amount;
+    }, 0);
+  }, [pendingOrders]);
+
+  // 历史记录
+  const recentTransactions = useMemo(() => {
+    if (!bookings || !Array.isArray(bookings)) return [];
+    return bookings.filter((b: any) => b.status === 'past');
+  }, [bookings]);
+
+  // --- 核心修复：点击领取功能 ---
+  const handleClaim = async () => {
+    // 如果没有待领取的钱，直接返回
+    if (totalPendingAmount <= 0) {
+      alert("No pending rewards to claim!");
+      return;
+    }
+   
     setIsClaiming(true);
-    // 模拟随机奖励: 1.00 到 10.00 之间
-    const randomReward = parseFloat((Math.random() * 9 + 1).toFixed(2));
-    
-    setTimeout(() => {
-      setBalance((prev: number) => prev + randomReward);
+    try {
+      // 在 Firebase 中更新所有相关订单的状态
+      const updatePromises = pendingOrders.map((order: any) => {
+        const orderRef = doc(db, "Booking", order.id);
+        return updateDoc(orderRef, { cashbackClaimed: true });
+      });
+
+      await Promise.all(updatePromises);
+
+      // 更新前端显示的余额
+      setBalance((prev: number) => prev + totalPendingAmount);
+      alert(`Success! You've claimed ${symbol} ${totalPendingAmount.toFixed(2)}`);
+    } catch (error) {
+      console.error("Error updating cashback:", error);
+      alert("Failed to claim. Please try again.");
+    } finally {
       setIsClaiming(false);
-      alert(`Success! You've claimed ${symbol} ${randomReward}`);
-    }, 800);
+    }
+  };
+
+  const handleWithdraw = () => {
+    if (balance <= 0) return;
+    const confirmExchange = window.confirm(`Exchange ${symbol}${balance.toFixed(2)} for a cash coupon?`);
+    if (confirmExchange) {
+      setBalance(0);
+      alert("Success! Your coupon is ready.");
+      setLocalView('main');
+    }
   };
 
   return (
     <div className="cashback-container fade-in">
-      {/* 头部：参考你的 Achievement 页面 */}
+      {/* 头部 */}
       <div className="sub-page-header">
         <ChevronLeft onClick={() => setLocalView('main')} className="back-icon" />
-        <span>Cashback Rewards</span>
+        <span>{t.cashback || 'Cashback Rewards'}</span>
       </div>
 
       <div className="cashback-body">
-        {/* 余额大卡片：参考 Settings 的圆角边框 */}
+        {/* 余额大卡片 */}
         <div className="ui-card balance-hero">
           <div className="balance-info">
             <p className="label">Available Balance</p>
-            <h1 className="amount">{symbol} {balance.toFixed(2)}</h1>
+            <h1 className="amount">{symbol} {Number(balance).toFixed(2)}</h1>
           </div>
           <div className="wallet-illustration">
              <Wallet size={48} color="#7b2cbf" />
           </div>
         </div>
 
-        {/* 任务部分：参考你的 Achievements 列表样式 */}
+        {/* 任务领取区域 - 修复了点击逻辑 */}
         <div className="ui-card">
-          <h3 className="ui-card-title">Daily Missions</h3>
-          <div className="ui-row clickable" onClick={!isClaiming ? handleClaim : undefined}>
+          <h3 className="ui-card-title">Pending Rewards</h3>
+          <div 
+            className="ui-row clickable" 
+            style={{ cursor: totalPendingAmount > 0 ? 'pointer' : 'default' }}
+            onClick={!isClaiming ? handleClaim : undefined}
+          >
             <Gift size={20} color="#7b2cbf" />
             <div className="row-content">
               <span className="row-title">Travel Reward</span>
-              <p className="row-desc">Claim your weekly active travel bonus</p>
+              <p className="row-desc">
+                {totalPendingAmount > 0 
+                  ? `Claim your ${symbol} ${totalPendingAmount.toFixed(2)} bonus` 
+                  : "No rewards available"}
+              </p>
             </div>
-            <span className="claim-btn">{isClaiming ? '...' : 'Claim'}</span>
+            {/* 按钮状态根据 totalPendingAmount 自动切换颜色 */}
+            <span 
+              className="claim-btn" 
+              style={{ 
+                background: totalPendingAmount > 0 ? '#7b2cbf' : '#ccc',
+                opacity: isClaiming ? 0.7 : 1
+              }}
+            >
+              {isClaiming ? '...' : 'Claim'}
+            </span>
           </div>
         </div>
 
-        {/* 历史记录：参考 Settings 的排版 */}
+        {/* 历史记录记录 */}
         <div className="ui-card">
-          <h3 className="ui-card-title"><History size={18} /> Recent Transactions</h3>
-          <div className="ui-row no-click">
-            <span>Hotel Booking Refund</span>
-            <span className="ui-val positive">+{symbol} 15.00</span>
-          </div>
-          <div className="ui-row no-click">
-            <span>Promo Reward</span>
-            <span className="ui-val positive">+{symbol} 5.50</span>
-          </div>
+          <h3 className="ui-card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <History size={18} /> Recent Transactions
+          </h3>
+          
+          {recentTransactions.length === 0 ? (
+            <div className="ui-row no-click" style={{ justifyContent: 'center', color: '#999' }}>
+              <span>No transactions yet</span>
+            </div>
+          ) : (
+            recentTransactions.map((b: any) => {
+              const displayAmount = Number(b.cashbackAmount) || (Number(b.price) * 0.05) || 0;
+              return (
+                <div key={b.id} className="ui-row no-click">
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span className="row-title" style={{ fontSize: '14px' }}>{b.name || b.hotelName}</span>
+                    <span style={{ fontSize: '11px', color: b.cashbackClaimed ? '#22c55e' : '#888' }}>
+                      {b.cashbackClaimed ? 'CLAIMED' : 'PAST'}
+                    </span>
+                  </div>
+                  <span className={`ui-val ${b.cashbackClaimed ? '' : 'positive'}`}>
+                    +{symbol} {displayAmount.toFixed(2)}
+                  </span>
+                </div>
+              );
+            })
+          )}
         </div>
 
         <button 
           className={`ui-logout-btn ${balance <= 0 ? 'disabled' : ''}`} 
-          style={{ marginTop: '20px', background: balance > 0 ? '#7b2cbf' : '#ccc' }}
+          style={{ 
+            marginTop: '20px', 
+            background: balance > 0 ? '#7b2cbf' : '#ccc',
+            width: '100%',
+            padding: '15px',
+            borderRadius: '12px',
+            color: 'white',
+            border: 'none',
+            fontWeight: 'bold'
+          }}
           disabled={balance <= 0}
+          onClick={handleWithdraw}
         >
-          WITHDRAW FUNDS
+          CONVERT TO COUPON
         </button>
       </div>
     </div>

@@ -9,23 +9,31 @@ import '../styles/EditProfile.css';
 
 export const EditProfile = ({ setView }: { setView: (v: string) => void }) => {
   const user = auth.currentUser;
+
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
   const [formData, setFormData] = useState({
     displayName: user?.displayName || '',
     phoneNumber: '',
     email: user?.email || '',
     paymentMethod: 'credit_card'
   });
-  const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
 
   useEffect(() => {
     const fetchUserData = async () => {
       if (user) {
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setFormData(prev => ({ ...prev, ...docSnap.data() }));
+        try {
+          const docRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setFormData(prev => ({ 
+              ...prev, 
+              ...docSnap.data() 
+            }));
+          }
+        } catch (err) {
+          console.error("Error fetching user data:", err);
         }
       }
     };
@@ -41,7 +49,7 @@ export const EditProfile = ({ setView }: { setView: (v: string) => void }) => {
       const storageRef = ref(storage, `avatars/${user.uid}_${Date.now()}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
-      
+
       await updateProfile(user, { photoURL: url });
       await setDoc(doc(db, "users", user.uid), { photoURL: url }, { merge: true });
       
@@ -59,6 +67,7 @@ export const EditProfile = ({ setView }: { setView: (v: string) => void }) => {
     setLoading(true);
     try {
       await updateProfile(user, { displayName: formData.displayName });
+      
       const userRef = doc(db, "users", user.uid);
       await setDoc(userRef, {
         displayName: formData.displayName,
@@ -79,7 +88,6 @@ export const EditProfile = ({ setView }: { setView: (v: string) => void }) => {
 
   return (
     <div className="edit-profile-page-root">
-      {/* 统一紫色 Header 样式 */}
       <header className="zen-purple-header">
         <ArrowLeft className="header-icon-left" onClick={() => setView('profile')} />
         <h1 className="header-centered-title">Edit Profile</h1>
@@ -107,7 +115,13 @@ export const EditProfile = ({ setView }: { setView: (v: string) => void }) => {
             )}
             <label htmlFor="fileInput" className="camera-icon-badge">
               <Camera size={18} color="white" />
-              <input id="fileInput" type="file" accept="image/*" hidden onChange={handleImageChange} />
+              <input 
+                id="fileInput" 
+                type="file" 
+                accept="image/*" 
+                hidden 
+                onChange={handleImageChange} 
+              />
             </label>
           </div>
           {uploading && <p className="upload-status-text">Uploading...</p>}
@@ -135,7 +149,12 @@ export const EditProfile = ({ setView }: { setView: (v: string) => void }) => {
           
           <div className="input-group">
             <label>Email (View Only)</label>
-            <input type="text" value={formData.email} disabled className="disabled-input" />
+            <input 
+              type="text" 
+              value={formData.email} 
+              disabled 
+              className="disabled-input" 
+            />
           </div>
 
           <div className="payment-preference">
@@ -160,7 +179,7 @@ export const EditProfile = ({ setView }: { setView: (v: string) => void }) => {
         </div>
         
         <div className="edit-footer-mascot">
-           <img src={mascotImg} alt="mascot" />
+            <img src={mascotImg} alt="mascot" />
         </div>
       </div>
     </div>

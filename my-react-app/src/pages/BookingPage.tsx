@@ -1,18 +1,19 @@
-import { useState, useEffect } from 'react';
-import { db } from '../services/firebase'; 
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import React, { useState, useEffect } from 'react';
+import { db, auth } from '../services/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { MessageSquare } from 'lucide-react';
-import mascotImg from '../assets/MASCOT.png'; 
+import mascotImg from '../assets/MASCOT.png';
+import { translations } from '../utils/translations'; 
 import '../styles/BookingPage.css';
 
-export const BookingPage = ({ setView }: { setView: (view: any, id?: string) => void }) => {
+export const BookingPage = ({ setView, globalLang }: { setView: (view: any, id?: string) => void; globalLang: string }) => {
   const [activeTab, setActiveTab] = useState('upcoming');
   const [bookings, setBookings] = useState<any[]>([]);
+  const t = translations[globalLang || 'en']; 
 
-  // 【关键修复】安全转换日期函数，防止渲染 Firestore Object 导致崩溃
+  // Firebase Timestamp 安全转换逻辑
   const safeDate = (val: any) => {
-    if (!val) return "No Date";
-    // 如果是 Firestore Timestamp 对象 {seconds, nanoseconds}
+    if (!val) return "";
     if (typeof val === 'object' && val.seconds) {
       return new Date(val.seconds * 1000).toLocaleDateString('en-GB', {
         day: '2-digit',
@@ -20,12 +21,15 @@ export const BookingPage = ({ setView }: { setView: (view: any, id?: string) => 
         year: 'numeric'
       });
     }
-    // 如果已经是字符串，直接返回
     return String(val);
   };
 
+  // Firebase 实时监听
   useEffect(() => {
-    const q = query(collection(db, "Booking")); 
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const q = query(collection(db, "Booking"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setBookings(items);
@@ -36,21 +40,21 @@ export const BookingPage = ({ setView }: { setView: (view: any, id?: string) => 
   }, []);
 
   const filterBy = (type: string) => {
-    return bookings.filter(b => 
-      (b.status === activeTab) && 
+    return bookings.filter(b =>
+      (b.status === activeTab) &&
       (b.type === type || (type === 'ticket' && b.type === 'flight'))
     );
   };
 
-  const renderSection = (title: string, type: string) => {
+  const renderSection = (titleKey: string, type: string) => {
     const data = filterBy(type);
     return (
       <section className="zen-section">
-        <h3 className="section-title">{title}</h3>
+        <h3 className="section-title">{t[titleKey]}</h3>
         {data.length === 0 ? (
           <div className="zen-no-booking">
             <img src={mascotImg} alt="No Booking" className="zen-mascot" />
-            <p>no booking</p>
+            <p>{t.noBooking}</p>
           </div>
         ) : (
           data.map(item => {
@@ -58,59 +62,63 @@ export const BookingPage = ({ setView }: { setView: (view: any, id?: string) => 
             return (
               <div key={item.id} className="zen-card-wrapper">
                 <div className="zen-status-badge">
-                  {isFlight ? 'Check-in' : 'Confirmed'}
+                  {isFlight ? t.checkIn : t.confirmed}
                 </div>
+               
                 <div className="zen-card-body">
                   {isFlight ? (
+                    /* 【新版 Design】Ticket 布局：大字体 + 标签式展示 */
                     <div className="zen-ticket-content">
                       <div className="ticket-left">
-                        <h4 className="ticket-main-title">Depart</h4>
-                        {/* 【已修复】使用 safeDate */}
+                        <h4 className="ticket-main-title">{t.depart}</h4>
                         <p className="ticket-text-large">{safeDate(item.date)}</p>
-                        <p className="ticket-location">From: {item.from || "N/A"}</p>
-                        <p className="ticket-location">To: {item.to || "N/A"}</p>
+                        
+                        <div className="ticket-location-container">
+                          {/* 保留新版的 label 和 value 结构，确保 CSS 渲染大字体 */}
+                          <div className="location-row">
+                            <span className="location-label">{t.from}</span>
+                            <span className="location-value">{item.from}</span>
+                          </div>
+                          <div className="location-row">
+                            <span className="location-label">{t.to}</span>
+                            <span className="location-value">{item.to}</span>
+                          </div>
+                        </div>
                       </div>
+
                       <div className="ticket-right">
-                        <p className="ticket-sub">booking no: {item.bookingNum || item.bookNum || "N/A"}</p>
-                        <p className="ticket-sub">{item.airline || "Airline"}</p>
-                        <p className="ticket-sub">{item.pax || 1} pax.</p>
+                        {/* 纯数据渲染，不带 "no:" 前缀 */}
+                        <p className="ticket-sub-id">{item.bookingNum || item.bookNum}</p>
+                        <p className="ticket-sub">{item.airline}</p>
+                        <p className="ticket-sub">{item.pax} {item.pax ? 'pax.' : ''}</p>
                       </div>
                     </div>
                   ) : (
+                    /* 酒店/交通布局 */
                     <div className="zen-card-main-content">
-                      <img src={item.imageUrl || "https://via.placeholder.com/60"} alt="item" className="zen-item-thumb" />
+                      <img src={item.imageUrl || mascotImg} alt="item" className="zen-item-thumb" />
                       <div className="zen-item-details">
                         <div className="zen-detail-header">
                           <h4 className="zen-item-name">{item.name || item.hotelName}</h4>
-                          <span className="zen-booking-no">no: {item.bookingNum || item.bookNum}</span>
+                          <span className="zen-booking-no">{item.bookingNum || item.bookNum}</span>
                         </div>
-                        {/* 【已修复】使用 safeDate */}
                         <p className="zen-date-normal">{safeDate(item.date)}</p>
                         <p className="zen-description">
-                          {item.type === 'transport' 
-                            ? `plate: ${item.plateNum || 'TBD'}` 
-                            : (item.details || "Details available")}
+                          {item.type === 'transport' ? item.plateNum : item.details}
                         </p>
                       </div>
                     </div>
                   )}
-                  
+                 
                   <div className="zen-action-row">
                     {activeTab === 'upcoming' && (
-                      <span 
-                        className="zen-refund-btn" 
-                        onClick={() => setView('refund', item.id)}
-                      >
-                        Refund
+                      <span className="zen-refund-btn" onClick={() => setView('refund', item.id)}>
+                        {t.refund}
                       </span>
                     )}
-                    
                     {isFlight && (
-                      <span 
-                        className="zen-view-btn" 
-                        onClick={() => setView('view-ticket', item.id)}
-                      >
-                        View
+                      <span className="zen-view-btn" onClick={() => setView('view-ticket', item.id)}>
+                        {t.view}
                       </span>
                     )}
                   </div>
@@ -133,31 +141,25 @@ export const BookingPage = ({ setView }: { setView: (view: any, id?: string) => 
         </div>
       </header>
 
-      <div className="zen-tab-bar">
-        {['upcoming', 'past', 'cancelled'].map(t => (
-          <button 
-            key={t} 
-            className={activeTab === t ? 'active' : ''} 
-            onClick={() => setActiveTab(t)}
-          >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>
-        ))}
-      </div>
+      <div className="max-width-container">
+        <div className="zen-tab-bar">
+          {['upcoming', 'past', 'cancelled'].map(tab => (
+            <button
+              key={tab}
+              className={activeTab === tab ? 'active' : ''}
+              onClick={() => setActiveTab(tab)}
+            >
+              {t[tab]}
+            </button>
+          ))}
+        </div>
 
-      <main className="zen-list" style={{ paddingBottom: '80px' }}>
-        {renderSection('My Ticket', 'ticket')}
-        {renderSection('My Hotel', 'hotel')}
-        {renderSection('My Transport', 'transport')}
-      </main>
-      
-      {/* 底部导航 (确保逻辑与 App.tsx 一致) */}
-      <footer className="zen-nav">
-        <span onClick={() => setView('home')}>🏠</span>
-        <span onClick={() => setView('notification')}>🔔</span>
-        <span className="active" onClick={() => setView('booking')}>📅</span>
-        <span onClick={() => setView('profile')}>👤</span>
-      </footer>
+        <main className="zen-list" style={{ paddingBottom: '40px' }}>
+          {renderSection('myTicket', 'ticket')}
+          {renderSection('myHotel', 'hotel')}
+          {renderSection('myTransport', 'transport')}
+        </main>
+      </div>
     </div>
   );
 };
