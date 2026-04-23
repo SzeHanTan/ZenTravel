@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Calendar, User, ArrowLeft, X, Plus, Minus, Loader2, Star, MapPin } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
-import { getHotels } from '../services/geminiService';
+import { getHotels } from '../services/hotelService';
 import "../styles/HotelsPage.css";
 
 // --- Sub-Component: Results View ---
