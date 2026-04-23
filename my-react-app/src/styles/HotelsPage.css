@@ -1,0 +1,156 @@
+/* Hotels Page Specific Styles */
+.hotels-container {
+    padding: 15px;
+}
+
+/* The Large Purple Search Card */
+.hotel-search-card {
+    background: rgba(234, 221, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border: 2px solid #7b2cbf;
+    border-radius: 25px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.search-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-bottom: 1px solid rgba(123, 44, 191, 0.2);
+}
+
+.search-row:last-of-type { border-bottom: none; }
+
+.search-row input {
+    background: transparent;
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.night-count {
+    font-size: 0.8rem;
+    color: #666;
+    margin-left: auto;
+}
+
+/* Filter Tags */
+.filter-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 5px 0;
+}
+
+.tag {
+    background: #7b2cbf;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.tag.inactive {
+    background: #e0d4f7;
+    color: #7b2cbf;
+}
+
+/* Action Button */
+.btn-primary-search {
+    background: #0000ff; /* Matches your blue design */
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 50px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+/* Section Headings */
+.section-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+}
+
+.hotel-scroll {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scrollbar-width: none;
+}
+
+.search-row.clickable {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.search-row.clickable:active {
+    background: rgba(123, 44, 191, 0.1);
+}
+
+.row-text {
+    font-size: 0.9rem;
+    color: #333;
+    flex: 1;
+}
+
+/* Modal Inner Content */
+.date-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.date-input-group input {
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-family: inherit;
+}
+
+/* Guest Counter Styling */
+.counter-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.counter-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.counter-controls svg {
+    width: 20px;
+    height: 20px;
+    padding: 5px;
+    background: #f3ebff;
+    border-radius: 50%;
+    color: #7b2cbf;
+    cursor: pointer;
+}
+
+.close-icon {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    cursor: pointer;
+    color: #666;
+}

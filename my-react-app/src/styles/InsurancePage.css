@@ -1,0 +1,106 @@
+.insurance-container {
+    padding: 20px;
+    padding-bottom: 100px;
+    text-align: left;
+}
+
+.insurance-card {
+    background: rgba(234, 221, 255, 0.8);
+    border: 1.5px solid #7b2cbf;
+    border-radius: 25px;
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(123, 44, 191, 0.1);
+}
+
+.insurance-card h3 {
+    font-size: 1.1rem;
+    color: #4b0082;
+    margin-bottom: 15px;
+}
+
+.insurance-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+}
+
+.insurance-card li {
+    font-size: 0.95rem;
+    color: #000; /* Black text as requested */
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.price-tag {
+    position: absolute;
+    bottom: 15px;
+    right: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #4b0082;
+}
+
+/* Yellow Button Row */
+.action-row {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.btn-yellow {
+    flex: 1;
+    background: #fff9c4;
+    border: 1.5px solid #fbc02d;
+    padding: 20px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(251, 192, 45, 0.2);
+}
+
+.declaration-text {
+    margin-top: 25px;
+    font-size: 0.9rem;
+    color: #666;
+    font-style: italic;
+}
+
+/* Modal List Styling */
+.modal-list {
+    margin-top: 20px;
+    text-align: left;
+}
+
+.modal-item {
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    margin-bottom: 12px;
+    border: 1px solid #eee;
+}
+
+.modal-item h4 {
+    margin: 0 0 5px 0;
+    color: #7b2cbf;
+}
+
+.modal-item p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #444;
+}
+
+.status-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    background: #e8f5e9;
+    color: #2e7d32;
+}

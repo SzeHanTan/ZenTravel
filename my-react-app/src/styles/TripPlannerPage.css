@@ -1,0 +1,287 @@
+/* Destination Scroller */
+.destinations-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 10px 5px;
+    scrollbar-width: none; /* Hide scrollbar for clean look */
+}
+
+.destinations-scroll::-webkit-scrollbar { display: none; }
+
+.dest-card {
+    min-width: 110px;
+    height: 90px;
+    background: white;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(123, 44, 191, 0.2);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+    color: #4b0082;
+    padding: 10px;
+    text-align: center;
+}
+
+.dest-card.selected {
+    background: #7b2cbf;
+    color: white;
+    border-color: #7b2cbf;
+}
+
+/* Manual Planner Template Styles */
+.itinerary-day {
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 20px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid white;
+}
+
+.day-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    color: #7b2cbf;
+    margin-bottom: 10px;
+}
+
+.activity-input-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.activity-input-row input {
+    flex: 1;
+    border: none;
+    background: white;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+
+.add-day-btn {
+    background: white;
+    border: 2px dashed #7b2cbf;
+    color: #7b2cbf;
+    width: 100%;
+    padding: 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 40px;
+}
+
+/* Fix Alignment & Colors */
+.planner-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(123, 44, 191, 0.1);
+}
+
+.label-black {
+    font-size: 1rem;
+    color: #000000; /* Black as requested */
+    font-weight: 500;
+}
+
+.preferences-header {
+    font-size: 1.3rem; /* Larger as requested */
+    font-weight: 800;
+    color: #000;
+    margin: 20px 0 10px 20px;
+}
+
+/* Beautiful Create It Myself Button */
+.btn-outline-zen {
+    width: 100%;
+    background: white;
+    color: #7b2cbf;
+    border: 2px solid #7b2cbf;
+    padding: 14px;
+    border-radius: 50px;
+    font-weight: bold;
+    font-size: 1rem;
+    margin-top: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-zen:hover {
+    background: #f3ebff;
+}
+
+/* Preference Chips Styles */
+.preference-section {
+    margin-bottom: 25px;
+}
+
+.section-label {
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.chip {
+    background: white;
+    border: 1px solid #ddd;
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chip.active {
+    border-color: #7b2cbf;
+    background: #f3ebff;
+    color: #7b2cbf;
+}
+
+.preferences-input {
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 12px;
+    font-family: inherit;
+    margin-top: 10px;
+}
+
+/* Text Alignment & Color */
+.planner-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(123, 44, 191, 0.1);
+}
+
+.label-black {
+    font-size: 1rem;
+    color: #000;
+    font-weight: 500;
+}
+
+.row-text-right {
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.row-text-black {
+    color: #000;
+    font-weight: 500;
+    margin-left: 15px;
+}
+
+/* Heading To Section */
+.planner-row-vertical {
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(123, 44, 191, 0.1);
+}
+
+.planner-row-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 20px;
+    margin-bottom: 10px;
+}
+
+/* Preferences Trigger Section */
+.preferences-trigger-row {
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.preferences-header-text {
+    font-size: 1.3rem; /* Larger as requested */
+    font-weight: 800;
+    color: #000;
+}
+
+.preferences-arrow {
+    color: #7b2cbf;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+/* Pop-up Preferences Modal */
+.pref-pop-up {
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.pref-scroll-area {
+    overflow-y: auto;
+    flex: 1;
+    margin: 15px 0;
+    padding-right: 5px;
+}
+
+/* Beautiful Create It Myself Button */
+.btn-outline-zen {
+    width: 100%;
+    background: transparent;
+    color: #7b2cbf;
+    border: 2px solid #7b2cbf;
+    padding: 15px;
+    border-radius: 50px;
+    font-weight: bold;
+    font-size: 1rem;
+    margin-top: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-outline-zen:active {
+    background: rgba(123, 44, 191, 0.1);
+}
+
+.plan-card {
+    background: white;
+    border-radius: 15px;
+    display: flex;
+    margin-bottom: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.plan-card-sidebar[data-type='Flight'] { background: #4461F2; }
+.plan-card-sidebar[data-type='Stay'] { background: #7b2cbf; }
+.plan-card-sidebar[data-type='Food'] { background: #FF9F43; }
+.plan-card-sidebar[data-type='Activity'] { background: #28C76F; }
+
+.plan-desc-input {
+    border: none;
+    font-weight: bold;
+    font-size: 1rem;
+    color: #000;
+    outline: none;
+}
+
+.floating-save-area {
+    position: fixed;
+    bottom: 85px;
+    left: 0;
+    right: 0;
+    padding: 10px 20px;
+    z-index: 10;
+}
