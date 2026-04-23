@@ -1,0 +1,13 @@
+.about-container { background: #fff; min-height: 100vh; }
+.about-header { background: #8a2be2; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+.about-header h1 { font-size: 18px; margin: 0; }
+.about-content { padding: 30px 20px; text-align: center; }
+.app-icon-placeholder { width: 80px; height: 80px; background: #8a2be2; border-radius: 20px; margin: 0 auto 15px; color: white; font-weight: bold; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(138, 43, 226, 0.3); }
+.about-logo-section h2 { margin-bottom: 5px; color: #333; }
+.about-logo-section p { color: #888; font-size: 14px; }
+.info-card { background: #f9f6ff; padding: 20px; border-radius: 15px; margin: 30px 0; text-align: left; border: 1px solid #e6e0f8; }
+.info-card h3 { color: #8a2be2; margin-top: 0; }
+.info-card p { line-height: 1.6; color: #555; font-size: 14px; }
+.features-grid { display: flex; justify-content: space-around; margin-bottom: 40px; }
+.feature-item { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; font-weight: bold; color: #444; }
+.about-footer { font-size: 12px; color: #aaa; margin-top: 50px; border-top: 1px solid #eee; padding-top: 20px; }

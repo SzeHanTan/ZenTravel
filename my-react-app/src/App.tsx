@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { auth } from './services/firebase';
+import React, { useState, useEffect } from 'react';
+import { auth } from './services/firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
 
 // Services
-import { registerUser, loginWithGoogle } from './services/authService';
+import { loginWithGoogle } from './services/authService';
 
 // Pages
 import { LandingPage } from './pages/LandingPage';
@@ -11,8 +11,15 @@ import { AuthPage } from './pages/AuthPage';
 import { HomePage } from './pages/HomePage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ChatbotPage } from './pages/ChatbotPage';
-import { BookingPage } from './pages/BookingPage';
+import { BookingPage } from './pages/BookingPage'; 
 import { NotificationPage } from './pages/NotificationPage';
+import { ViewTicket } from './pages/ViewTicket';
+import { RefundPage } from './pages/RefundPage'; 
+import { AboutUs } from './pages/AboutUs';
+import { HelpCenter } from './pages/HelpCenter';
+import { EditProfile } from './pages/EditProfile';
+import { SavedPage } from './pages/SavedPage'; 
+import { MyReviews } from './pages/MyReviews';
 
 // Components
 import { BottomNav } from './components/BottomNav';
@@ -21,104 +28,111 @@ import { BottomNav } from './components/BottomNav';
 import './App.css';
 import { MessageCircle } from 'lucide-react';
 
-// Define the available views for TypeScript
-type ViewState = 'landing' | 'auth' | 'register' | 'home' | 'profile' | 'chatbot' | 'booking' | 'notification';
+type ViewState = 
+  | 'landing' | 'auth' | 'register' | 'home' | 'profile' 
+  | 'chatbot' | 'booking' | 'notification' | 'view-ticket' 
+  | 'refund' | 'about' | 'help' 
+  | 'edit-profile' | 'saved' | 'my-reviews';
 
 function App() {
   const [view, setView] = useState<ViewState>('landing');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [selectedTicketId, setSelectedTicketId] = useState<string>(''); 
   const [user, setUser] = useState<any>(null);
+  const [authLoaded, setAuthLoaded] = useState(false);
 
-  // 1. Session Persistence: Check if user is already logged in
+  // 【全局状态 1: 货币】
+  const [globalCurrency, setGlobalCurrency] = useState({ name: 'Malaysian Ringgit', code: 'RM | MYR' });
+  
+  // 【全局状态 2: 返现余额】
+  const [cashbackBalance, setCashbackBalance] = useState(0.00);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      setAuthLoaded(true);
     });
     return () => unsubscribe();
   }, []);
 
-  // 2. Landing Timer: Transitions to Home (if logged in) or Auth (if guest)
   useEffect(() => {
     if (view === 'landing') {
       const timer = setTimeout(() => {
-        if (user) {
-          setView('home'); 
-        } else {
-          setView('auth'); 
+        if (authLoaded) {
+          if (user) setView('home'); 
+          else setView('auth'); 
         }
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [view, user]);
+  }, [view, user, authLoaded]);
 
-  // 3. Auth Handlers
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await registerUser(email, password);
-      setView('home'); 
-    } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        alert("This account already exists! Please log in instead.");
-      } else {
-        alert(error.message);
-      }
-    }
+  const handleSetView = (newView: any, id?: string) => {
+    setView(newView);
+    if (id) setSelectedTicketId(id);
   };
 
-  const handleGoogle = async () => {
-    try {
-      await loginWithGoogle();
-      setView('home');
-    } catch (error: any) { 
-      alert(error.message); 
-    }
-  };
-
-  // 4. Helper: Should we show the Bottom Navigation bar?
-  const authenticatedViews: ViewState[] = ['home', 'profile', 'chatbot', 'booking', 'notification'];
+  const authenticatedViews: ViewState[] = [
+    'home', 'profile', 'chatbot', 'booking', 'notification', 
+    'view-ticket', 'refund', 'about', 'help', 
+    'edit-profile', 'saved', 'my-reviews'
+  ];
   const showNavBar = authenticatedViews.includes(view);
+
+  async function handleGoogle() {
+    try { 
+      await loginWithGoogle(); 
+      setView('home'); 
+    } catch (e) { 
+      console.error(e); 
+    }
+  }
 
   return (
     <div className="app-container">
-      
-      {/* Landing & Authentication Views */}
       {view === 'landing' && <LandingPage />}
       
       {(view === 'auth' || view === 'register') && (
         <AuthPage 
-          view={view}
-          setView={setView}
-          onGoogle={handleGoogle}
+          view={view} setView={setView} onGoogle={handleGoogle} 
           onEmailClick={() => setView('register')}
-          onRegister={handleRegister} 
-          setEmail={setEmail}
-          setPassword={setPassword}
+          onRegister={async () => {}} setEmail={() => {}} setPassword={() => {}}
         />
       )}
 
-      {/* Main App Content Area */}
       <main className="main-content-area">
-        {view === 'home' && <HomePage setView={setView} />}
-        {view === 'profile' && <ProfilePage setView={setView} />}
-        {view === 'chatbot' && <ChatbotPage setView={setView} />}
-        {view === 'booking' && <BookingPage setView={setView} />}
-        {view === 'notification' && <NotificationPage setView={setView} />}
+        {view === 'home' && <HomePage setView={handleSetView} globalCurrency={globalCurrency} />}
+        
+        {/* ProfilePage 接收所有全局状态进行联动 */}
+        {view === 'profile' && (
+          <ProfilePage 
+            setView={handleSetView} 
+            globalCurrency={globalCurrency} 
+            setGlobalCurrency={setGlobalCurrency} 
+            cashbackBalance={cashbackBalance}
+            setCashbackBalance={setCashbackBalance}
+          />
+        )}
+
+        {view === 'chatbot' && <ChatbotPage setView={handleSetView} />}
+        {view === 'booking' && <BookingPage setView={handleSetView} />} 
+        {view === 'notification' && <NotificationPage setView={handleSetView} />}
+        {view === 'view-ticket' && <ViewTicket ticketId={selectedTicketId} setView={handleSetView} />}
+        {view === 'refund' && <RefundPage bookingId={selectedTicketId} setView={handleSetView} />}
+        {view === 'about' && <AboutUs setView={handleSetView} />}
+        {view === 'help' && <HelpCenter setView={handleSetView} />}
+        {view === 'edit-profile' && <EditProfile setView={handleSetView} />}
+        {view === 'saved' && <SavedPage setView={handleSetView} />}
+        {view === 'my-reviews' && <MyReviews setView={handleSetView} />}
       </main>
 
-      {/* Persistent Global Navigation */}
       {showNavBar && (
         <>
-          {/* The actual floating bubble */}
           <div className="persistent-chatbot-btn" onClick={() => setView('chatbot')}>
             <MessageCircle color="#7b2cbf" />
           </div>
-          
-          <BottomNav currentView={view} setView={setView} />
+          <BottomNav currentView={view} setView={handleSetView} />
         </>
       )}
-      
     </div>
   );
 }

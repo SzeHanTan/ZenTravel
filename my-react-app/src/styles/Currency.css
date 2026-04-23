@@ -1,0 +1,104 @@
+.currency-page {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.currency-header {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  gap: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.search-container {
+  padding: 10px 15px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: #f1f3f4;
+  padding: 8px 15px;
+  border-radius: 12px;
+  gap: 10px;
+}
+
+.search-bar input {
+  border: none;
+  background: transparent;
+  outline: none;
+  flex: 1;
+  font-size: 16px;
+  color: #333;
+}
+
+.search-icon {
+  color: #5f6368;
+}
+
+.currency-list-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 15px;
+}
+
+.list-section-label {
+  font-size: 16px;
+  font-weight: bold;
+  margin: 20px 0 10px;
+  color: #202124;
+}
+
+.currency-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid #f8f9fa;
+  cursor: pointer;
+}
+
+.currency-row:active {
+  background: #f1f3f4;
+}
+
+.row-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.check-blue {
+  color: #1a73e8;
+}
+
+.check-placeholder {
+  width: 18px; /* 保持没有勾选时的对齐 */
+}
+
+.text-blue {
+  color: #1a73e8;
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.text-default {
+  color: #3c4043;
+  font-size: 16px;
+}
+
+.currency-code-text {
+  color: #70757a;
+  font-size: 14px;
+}
