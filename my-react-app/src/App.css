@@ -75,11 +75,26 @@ body, html {
   font-weight: 700;
   color: #7b2cbf;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.ai-floating-mascot {
+  width: 110%;
+  height: 110%;
+  object-fit: cover;
+  object-position: center top;
 }
 
 .ai-floating-btn.active-ai {
-  background: #7b2cbf;
-  color: #fff;
+  background: #ede0ff;
+  border-color: #5a1fa0;
+}
+
+.persistent-chatbot-mascot {
+  width: 120%;
+  height: 120%;
+  object-fit: cover;
+  object-position: center top;
 }
 
 /* 核心：确保 Landing 和 Auth 的紫色背景 */
@@ -101,7 +116,7 @@ body, html {
 
 .persistent-chatbot-btn {
   position: fixed;
-  bottom: 100px; /* Sits above the navigation bar */
+  bottom: 100px;
   right: 20px;
   width: 55px;
   height: 55px;
@@ -115,10 +130,17 @@ body, html {
   cursor: pointer;
   z-index: 999;
   transition: transform 0.2s ease;
+  overflow: hidden;
 }
 
 .persistent-chatbot-btn:hover {
   transform: scale(1.1);
+}
+
+.persistent-chatbot-btn--active {
+  border-color: #5a1fa0;
+  background: #ede0ff;
+  box-shadow: 0 0 0 4px rgba(123, 44, 191, 0.2), 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes fadeIn {

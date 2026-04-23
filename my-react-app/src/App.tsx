@@ -1,7 +1,8 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { auth } from './services/firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
-import { MessageCircle } from 'lucide-react';
+import mascotImg from './assets/MASCOT-removebg-preview.png';
+import { FloatingChatWidget } from './components/FloatingChatWidget';
 
 // Services
 import { loginWithGoogle } from './services/authService';
@@ -48,7 +49,8 @@ function App() {
   const [selectedTicketId, setSelectedTicketId] = useState<string>(''); 
   const [user, setUser] = useState<any>(null);
   const [authLoaded, setAuthLoaded] = useState(false);
-  const [loading, setLoading] = useState(true); 
+  const [loading, setLoading] = useState(true);
+  const [showFloatingChat, setShowFloatingChat] = useState(false);
 
   const [globalCurrency, setGlobalCurrency] = useState({ name: 'Malaysian Ringgit', code: 'RM | MYR' });
   const [cashbackBalance, setCashbackBalance] = useState(0.00);
@@ -162,9 +164,18 @@ function App() {
               {renderContent()}
             </Suspense>
           </main>
-          <div className="persistent-chatbot-btn" onClick={() => setView('chatbot')}>
-            <MessageCircle color="#7b2cbf" />
+          <div
+            className={`persistent-chatbot-btn ${showFloatingChat ? 'persistent-chatbot-btn--active' : ''}`}
+            onClick={() => setShowFloatingChat((v) => !v)}
+          >
+            <img src={mascotImg} alt="AI Assistant" className="persistent-chatbot-mascot" />
           </div>
+          {showFloatingChat && (
+            <FloatingChatWidget
+              onClose={() => setShowFloatingChat(false)}
+              onOpenFull={() => { setShowFloatingChat(false); setView('chatbot'); }}
+            />
+          )}
           <BottomNav currentView={view} setView={handleSetView} />
         </>
       )}

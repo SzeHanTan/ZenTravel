@@ -1,5 +1,6 @@
 import { Home, Bell, Calendar, User } from 'lucide-react';
 import '../App.css';
+import mascotImg from '../assets/MASCOT-removebg-preview.png';
 
 interface NavProps {
   currentView: string;
@@ -18,7 +19,9 @@ export const BottomNav = ({ currentView, setView }: NavProps) => {
       </div>
 
       <div className="ai-floating-container" onClick={() => setView('chatbot')}>
-        <div className={`ai-floating-btn ${currentView === 'chatbot' ? 'active-ai' : ''}`}>AI</div>
+        <div className={`ai-floating-btn ${currentView === 'chatbot' ? 'active-ai' : ''}`}>
+          <img src={mascotImg} alt="AI Assistant" className="ai-floating-mascot" />
+        </div>
       </div>
 
       <div className={`nav-item ${currentView === 'booking' ? 'active' : ''}`} onClick={() => setView('booking')}>
