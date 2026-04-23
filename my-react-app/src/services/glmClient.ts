@@ -52,6 +52,8 @@ export class GLMClient {
 
     const data = (await response.json()) as ILMUResponse;
 
+    console.log("RAW ILMU DATA:", data);
+
     if (data.error?.message) {
       throw new Error(`ILMU API error: ${data.error.message}`);
     }
