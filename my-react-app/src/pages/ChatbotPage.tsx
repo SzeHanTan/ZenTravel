@@ -28,6 +28,27 @@ interface Message {
   workflowOutput?: StructuredWorkflowOutput;
 }
 
+type AgentPanelStatus = 'pending' | 'running' | 'completed';
+
+interface AgentPanelEntry {
+  status: AgentPanelStatus;
+  activityText: string;
+}
+
+const PANEL_AGENTS = [
+  { key: 'master', label: 'Brain Master', mascot: mascotMain,       color: '#7b2cbf' },
+  { key: 'flight', label: 'Flight Agent', mascot: mascotFlight,     color: '#9d8977' },
+  { key: 'hotel',  label: 'Hotel Agent',  mascot: mascotHotel,      color: '#a8948f' },
+  { key: 'claims', label: 'Claims Agent', mascot: mascotInsurance,  color: '#b3a682' },
+] as const;
+
+const DEFAULT_PANEL: Record<string, AgentPanelEntry> = {
+  master: { status: 'pending', activityText: 'Ready to orchestrate' },
+  flight: { status: 'pending', activityText: 'Awaiting task' },
+  hotel:  { status: 'pending', activityText: 'Awaiting task' },
+  claims: { status: 'pending', activityText: 'Awaiting task' },
+};
+
 const AGENT_CONFIG: Record<AgentType, { label: string; color: string; placeholder: string; mascot: string }> = {
   flight: {
     label: 'FLIGHTS',
@@ -61,6 +82,39 @@ const AGENT_CONFIG: Record<AgentType, { label: string; color: string; placeholde
   },
 };
 
+const SUGGESTED_PROMPTS: Record<ActiveAgent, string[]> = {
+  master: [
+    'Flight MH370 from KL to Tokyo was cancelled, need help',
+    'My connecting flight was missed due to a 3-hour delay',
+    'Hotel overbooked despite my confirmed reservation',
+  ],
+  flight: [
+    'Rebook my cancelled flight MH123 to next available',
+    'My flight was delayed 4 hours — what are my options?',
+    'Check baggage allowance for international flights',
+  ],
+  hotel: [
+    'Extend my stay at Grand Hyatt KL by 2 nights',
+    'My hotel room is not as described in the booking',
+    'Request early check-in for tomorrow morning',
+  ],
+  insurance: [
+    'My flight was delayed 6 hours, how do I file a claim?',
+    'Lost luggage — what is the reimbursement process?',
+    'Trip cancellation due to a medical emergency',
+  ],
+  trip: [
+    'Plan a 5-day trip to Tokyo, budget MYR 8,000',
+    'Weekend getaway from KL to Langkawi',
+    'Best itinerary for a Bali family trip, 7 days',
+  ],
+  car: [
+    'My rental car broke down in Penang — help!',
+    'Extend car rental in Singapore by 3 more days',
+    'Minor accident with rental car, what should I do?',
+  ],
+};
+
 function formatWorkflowOutput(output: StructuredWorkflowOutput): string {
   const actionLines = output.plan?.actions.map(
     (a) =>
@@ -86,8 +140,47 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeAgent, setActiveAgent] = useState<ActiveAgent>('master');
+  const [agentPanel, setAgentPanel] = useState<Record<string, AgentPanelEntry>>({ ...DEFAULT_PANEL });
+  const panelTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   let msgId = useRef(0);
+
+  const clearPanelTimers = () => {
+    panelTimers.current.forEach(clearTimeout);
+    panelTimers.current = [];
+  };
+
+  const setAgent = (key: string, patch: Partial<AgentPanelEntry>) =>
+    setAgentPanel((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+
+  const runPanelSimulation = () => {
+    clearPanelTimers();
+    setAgentPanel({
+      master: { status: 'running',  activityText: 'Analyzing disruption...' },
+      flight: { status: 'pending',  activityText: 'Awaiting task' },
+      hotel:  { status: 'pending',  activityText: 'Awaiting task' },
+      claims: { status: 'pending',  activityText: 'Awaiting task' },
+    });
+    const t1 = setTimeout(() => setAgent('flight', { status: 'running', activityText: 'Searching flights...' }), 1400);
+    const t2 = setTimeout(() => setAgent('hotel',  { status: 'running', activityText: 'Checking accommodations...' }), 2600);
+    const t3 = setTimeout(() => setAgent('claims', { status: 'running', activityText: 'Checking compensation...' }), 3800);
+    panelTimers.current = [t1, t2, t3];
+  };
+
+  const completePanelSimulation = () => {
+    clearPanelTimers();
+    setAgentPanel({
+      master: { status: 'completed', activityText: 'Workflow orchestrated' },
+      flight: { status: 'completed', activityText: 'Flight options ready' },
+      hotel:  { status: 'completed', activityText: 'Hotels confirmed' },
+      claims: { status: 'completed', activityText: 'Claim filed' },
+    });
+  };
+
+  const resetPanel = () => {
+    clearPanelTimers();
+    setAgentPanel({ ...DEFAULT_PANEL });
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -102,6 +195,7 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
   const handleAgentSelect = (agent: ActiveAgent) => {
     setActiveAgent(agent);
     setMessages([]);
+    resetPanel();
   };
 
   const handleSend = async () => {
@@ -112,10 +206,12 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
     setMessages((prev) => [...prev, userMsg]);
     setInputText('');
     setIsProcessing(true);
+    if (activeAgent === 'master') runPanelSimulation();
 
     try {
       if (activeAgent === 'master') {
         const result = await runZenTravelWorkflow(payload);
+        completePanelSimulation();
         const aiMsg: Message = {
           id: ++msgId.current,
           text: formatWorkflowOutput(result),
@@ -134,6 +230,7 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
         setMessages((prev) => [...prev, aiMsg]);
       }
     } catch (error) {
+      if (activeAgent === 'master') resetPanel();
       const errorText = error instanceof Error ? error.message : 'Unknown error';
       setMessages((prev) => [
         ...prev,
@@ -148,51 +245,151 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
     }
   };
 
-  return (
-    <div className="chatbot-page fade-in">
-      <header className="chatbot-header">ZenTravel</header>
+  const activeMascot = activeAgent === 'master' ? mascotMain : AGENT_CONFIG[activeAgent].mascot;
+  const activeLabel  = activeAgent === 'master' ? 'Brain Master' : AGENT_CONFIG[activeAgent].label + ' Agent';
 
-      <main className="chatbot-content">
-        {/* Agent selector */}
-        <div className="category-grid">
+  return (
+    <div className="cb-page fade-in">
+
+      {/* ── Top bar ─────────────────────────────────────────────────── */}
+      <header className="cb-topbar">
+        <div className="cb-brand">
+          <span className="cb-brand-name">ZenTravel</span>
+          <span className="cb-brand-tag">AI Control</span>
+        </div>
+
+        <div className="cb-topbar-center">
+          <span className={`cb-status-pill ${isProcessing ? 'cb-status-pill--busy' : 'cb-status-pill--ready'}`}>
+            <span className="cb-status-dot" />
+            {isProcessing ? 'Processing…' : 'Ready'}
+          </span>
+        </div>
+
+        <button className="cb-nav-back" onClick={() => setView('tripplanner')}>
+          ← Trip Planner
+        </button>
+      </header>
+
+      <div className="cb-content">
+
+        {/* ── Agent selector bar ──────────────────────────────────────── */}
+        <div className="cb-agent-bar">
           <div
-            className={`cat-btn master-btn ${activeAgent === 'master' ? 'active-agent' : ''}`}
+            className={`cb-chip cb-chip--master ${activeAgent === 'master' ? 'cb-chip--active' : ''}`}
             onClick={() => handleAgentSelect('master')}
           >
-            <img src={mascotMain} alt="AI" className="cat-btn-mascot" />
-            <span className="cat-btn-label">AI</span>
+            <div className="cb-chip-img-wrap">
+              <img src={mascotMain} className="cb-chip-img" alt="Master AI" />
+            </div>
+            <span className="cb-chip-name">Brain Master</span>
           </div>
+
           {(Object.keys(AGENT_CONFIG) as AgentType[]).map((type) => (
             <div
               key={type}
-              className={`cat-btn ${activeAgent === type ? 'active-agent' : ''}`}
-              style={{ backgroundColor: AGENT_CONFIG[type].color }}
+              className={`cb-chip ${activeAgent === type ? 'cb-chip--active' : ''}`}
               onClick={() => handleAgentSelect(type)}
             >
-              <img src={AGENT_CONFIG[type].mascot} alt={AGENT_CONFIG[type].label} className="cat-btn-mascot" />
-              <span className="cat-btn-label">{AGENT_CONFIG[type].label}</span>
+              <div className="cb-chip-img-wrap">
+                <img src={AGENT_CONFIG[type].mascot} className="cb-chip-img" alt={AGENT_CONFIG[type].label} />
+              </div>
+              <span className="cb-chip-name">{AGENT_CONFIG[type].label}</span>
             </div>
           ))}
         </div>
 
-        {/* Active agent label */}
-        <div className="active-agent-label">
-          {activeAgent === 'master'
-            ? '✦ Brain Master — handles all travel disruptions'
-            : `✦ ${activeAgent.charAt(0).toUpperCase() + activeAgent.slice(1)} Specialist — focused expert mode`}
+        {/* ── Current mode strip ──────────────────────────────────────── */}
+        <div className="cb-mode-strip">
+          <img src={activeMascot} className="cb-mode-strip-mascot" alt="" />
+          <div className="cb-mode-strip-text">
+            <span className="cb-mode-strip-title">{activeLabel}</span>
+            <span className="cb-mode-strip-desc">
+              {activeAgent === 'master'
+                ? 'Orchestrates the full travel disruption recovery workflow'
+                : `Dedicated specialist — focused on ${activeAgent} queries`}
+            </span>
+          </div>
+          <span className="cb-mode-strip-badge">
+            {activeAgent === 'master' ? 'ORCHESTRATOR' : 'SPECIALIST'}
+          </span>
         </div>
 
-        <div className="chat-modal">
-          <h2 className="modal-title">ZenTravel AI</h2>
+        {/* ── Agent Activity Panel (master only) ──────────────────────── */}
+        {activeAgent === 'master' && (
+          <div className="aap-panel">
+            <div className="aap-panel-header">
+              <span className="aap-panel-title">Agent Activity</span>
+              <span className={`aap-live-badge ${isProcessing ? 'aap-live-badge--active' : ''}`}>
+                {isProcessing ? '● LIVE' : '○ IDLE'}
+              </span>
+            </div>
+            <div className="aap-agents-row">
+              {PANEL_AGENTS.map(({ key, label, mascot, color }) => {
+                const entry = agentPanel[key];
+                return (
+                  <div key={key} className={`aap-card aap-card--${entry.status}`}>
+                    <div className="aap-card-avatar" style={{ borderColor: color }}>
+                      <img src={mascot} alt={label} className="aap-card-mascot" />
+                      {entry.status === 'running' && <span className="aap-pulse-ring" style={{ borderColor: color }} />}
+                    </div>
+                    <div className="aap-card-body">
+                      <span className="aap-card-name">{label}</span>
+                      <div className="aap-card-status-row">
+                        <span className={`aap-status-dot aap-status-dot--${entry.status}`} />
+                        <span className="aap-status-label">
+                          {entry.status === 'running' ? 'Running' : entry.status === 'completed' ? 'Completed' : 'Pending'}
+                        </span>
+                      </div>
+                      <span className="aap-activity-text">{entry.activityText}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-          <div className="chat-area">
+        {/* ── Chat panel ──────────────────────────────────────────────── */}
+        <div className="cb-chat-panel">
+
+          <div className="cb-chat-panel-header">
+            <span className="cb-chat-panel-label">CONVERSATION</span>
+            {messages.length > 0 && (
+              <button
+                className="cb-clear-btn"
+                onClick={() => { setMessages([]); resetPanel(); }}
+                disabled={isProcessing}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="cb-chat-body">
             {messages.length === 0 ? (
-              <div className="empty-state">
-                <p>
+              <div className="cb-empty">
+                <div className="cb-empty-mascot-wrap">
+                  <img src={activeMascot} className="cb-empty-mascot" alt="" />
+                </div>
+                <p className="cb-empty-heading">How can I help?</p>
+                <p className="cb-empty-sub">
                   {activeAgent === 'master'
                     ? 'Describe any travel disruption and I will handle the full recovery workflow.'
                     : `Ask your ${activeAgent} question and I will act as your dedicated ${activeAgent} specialist.`}
                 </p>
+                <div className="cb-prompts">
+                  {SUGGESTED_PROMPTS[activeAgent].map((prompt, i) => (
+                    <button
+                      key={i}
+                      className="cb-prompt"
+                      onClick={() => setInputText(prompt)}
+                      disabled={isProcessing}
+                    >
+                      <span className="cb-prompt-arrow">→</span>
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="messages-container">
@@ -217,26 +414,30 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
             )}
           </div>
 
-          <div className="chat-input-container">
+          <div className="cb-input-bar">
             <input
               type="text"
-              className="chat-input"
+              className="cb-input"
               placeholder={getPlaceholder()}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void handleSend()}
               disabled={isProcessing}
             />
-            <button className="send-btn" onClick={() => void handleSend()} disabled={isProcessing}>
-              {isProcessing ? '...' : 'Send'}
+            <button className="cb-send" onClick={() => void handleSend()} disabled={isProcessing}>
+              {isProcessing ? (
+                <span className="cb-send-spinner" />
+              ) : (
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              )}
             </button>
           </div>
-
-          <button className="chat-btn" onClick={() => setView('tripplanner')}>
-            Back to Trip Planner
-          </button>
         </div>
-      </main>
+
+      </div>
     </div>
   );
 };
