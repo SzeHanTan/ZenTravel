@@ -1,25 +1,19 @@
 // ILMU API — OpenAI-compatible format
 // Base URL: https://api.ilmu.ai/v1
-// Models: nemo-super (best), ilmu-nemo-nano (lightweight)
-// Docs: https://docs.ilmu.ai/docs/getting-started/overview
+// Model: ilmu-glm-5.1
 
 interface ILMUResponse {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-  error?: {
-    message?: string;
-  };
+  choices?: Array<{ message?: { content?: string } }>;
+  error?:   { message?: string };
 }
 
-// In dev, Vite proxies /ilmu-api/* → https://api.ilmu.ai/* to bypass CORS.
-// In production, set VITE_GLM_API_URL to a backend proxy URL.
 const isDev = import.meta.env.DEV;
 const ILMU_API_BASE =
   import.meta.env.VITE_GLM_API_URL ?? (isDev ? '/ilmu-api/v1' : 'https://api.ilmu.ai/v1');
-const ILMU_MODEL = import.meta.env.VITE_GLM_MODEL ?? 'ilmu-glm-5.1';
+const ILMU_MODEL   = import.meta.env.VITE_GLM_MODEL ?? 'ilmu-glm-5.1';
+
+const CLIENT_TIMEOUT_MS = 18_000; // abort if server hasn't replied in 18 s
+const MAX_RETRIES       = 1;       // one automatic retry on 5xx / timeout
 
 export class GLMClient {
   private readonly apiKey: string;
@@ -30,38 +24,76 @@ export class GLMClient {
 
   async complete(
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    maxTokens = 400,
   ): Promise<string> {
-    const response = await fetch(`${ILMU_API_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: ILMU_MODEL,
-        messages,
-        temperature: 0.2,
-        max_tokens: 1024,
-      }),
-    });
+    let lastErr: Error = new Error('Unknown error');
 
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`ILMU request failed (${response.status}): ${text}`);
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, 800 * attempt)); // shorter retry delay
+      }
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(`${ILMU_API_BASE}/chat/completions`, {
+          method:  'POST',
+          signal:  controller.signal,
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model:       ILMU_MODEL,
+            messages,
+            temperature: 0.2,
+            max_tokens:  maxTokens,
+          }),
+        });
+
+        clearTimeout(timer);
+
+        // Retry on 5xx (includes 504 Gateway Timeout)
+        if (response.status >= 500) {
+          lastErr = new Error(`ILMU ${response.status} — retrying`);
+          continue;
+        }
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`ILMU request failed (${response.status}): ${text}`);
+        }
+
+        const data = (await response.json()) as ILMUResponse;
+
+        if (data.error?.message) {
+          throw new Error(`ILMU API error: ${data.error.message}`);
+        }
+
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) {
+          throw new Error('ILMU returned an empty response');
+        }
+
+        return content;
+
+      } catch (err) {
+        clearTimeout(timer);
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          lastErr = new Error('GLM request timed out after 25 s');
+          continue;
+        }
+        // Network errors are also retryable
+        if (err instanceof TypeError) {
+          lastErr = err;
+          continue;
+        }
+        throw err; // non-retryable (auth, bad request, etc.)
+      }
     }
 
-    const data = (await response.json()) as ILMUResponse;
-
-    if (data.error?.message) {
-      throw new Error(`ILMU API error: ${data.error.message}`);
-    }
-
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) {
-      throw new Error('ILMU returned an empty response');
-    }
-
-    return content;
+    throw lastErr;
   }
 }
 

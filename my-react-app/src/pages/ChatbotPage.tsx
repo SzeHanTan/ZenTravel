@@ -5,8 +5,9 @@ import '../styles/AgentResponseCard.css';
 import { runZenTravelWorkflow } from '../agents/workflowEngine';
 import { runSpecializedAgent } from '../agents/specializedAgents';
 import type { AgentType, SpecializedAgentOutput } from '../agents/specializedAgents';
-import type { StructuredWorkflowOutput } from '../agents/types';
+import type { StructuredWorkflowOutput, WorkflowAction } from '../agents/types';
 import { AgentResponseCard } from '../components/AgentResponseCard';
+import { WorkflowResponseCard } from '../components/WorkflowResponseCard';
 import mascotMain from '../assets/MASCOT-removebg-preview.png';
 import mascotHotel from '../assets/MASCOT1.png';
 import mascotCar from '../assets/MASCOT2.png';
@@ -28,7 +29,7 @@ interface Message {
   workflowOutput?: StructuredWorkflowOutput;
 }
 
-type AgentPanelStatus = 'pending' | 'running' | 'completed';
+type AgentPanelStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 interface AgentPanelEntry {
   status: AgentPanelStatus;
@@ -115,25 +116,14 @@ const SUGGESTED_PROMPTS: Record<ActiveAgent, string[]> = {
   ],
 };
 
-function formatWorkflowOutput(output: StructuredWorkflowOutput): string {
-  const actionLines = output.plan?.actions.map(
-    (a) =>
-      `• ${a.agent.toUpperCase()}: ${a.status}${a.output ? ` — ${a.output}` : ''}${a.error ? ` [${a.error}]` : ''}`,
-  ) ?? [];
 
-  const parts = [
-    `Stage: ${output.stage}`,
-    `Disruption: ${output.incident.disruptionType}`,
-    `Reasoning: ${output.reasoning.join(' ')}`,
-    output.clarifyingQuestions.length > 0
-      ? `Clarification needed:\n${output.clarifyingQuestions.map((q) => `• ${q}`).join('\n')}`
-      : null,
-    actionLines.length > 0 ? `Actions:\n${actionLines.join('\n')}` : null,
-    `Outcome: ${output.finalMessage}`,
-  ];
-
-  return parts.filter(Boolean).join('\n\n');
-}
+const WORKFLOW_STAGES = [
+  { id: 1, label: 'Input Agent', short: '1', icon: '📥', desc: 'GLM parses your message' },
+  { id: 2, label: 'Validation',  short: '2', icon: '🔍', desc: 'Checks for missing info' },
+  { id: 3, label: 'Reason',      short: '3', icon: '🧠', desc: 'GLM plans tool calls' },
+  { id: 4, label: 'Act',         short: '4', icon: '⚙️', desc: 'APIs fetch real data' },
+  { id: 5, label: 'Observe',     short: '5', icon: '📊', desc: 'GLM builds recovery plan' },
+];
 
 export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -141,13 +131,33 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeAgent, setActiveAgent] = useState<ActiveAgent>('master');
   const [agentPanel, setAgentPanel] = useState<Record<string, AgentPanelEntry>>({ ...DEFAULT_PANEL });
+  const [liveStage, setLiveStage] = useState(0);
   const panelTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const stageTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const chatEndRef    = useRef<HTMLDivElement>(null);
+  const lastAiMsgRef  = useRef<HTMLDivElement>(null);
   let msgId = useRef(0);
 
   const clearPanelTimers = () => {
     panelTimers.current.forEach(clearTimeout);
     panelTimers.current = [];
+  };
+
+  const runStageSimulation = () => {
+    stageTimers.current.forEach(clearTimeout);
+    setLiveStage(1);
+    const t1 = setTimeout(() => setLiveStage(2), 2000);
+    const t2 = setTimeout(() => setLiveStage(3), 4000);
+    const t3 = setTimeout(() => setLiveStage(4), 7000);
+    // Stage 5 (Observe) stays pulsing until the real GLM response arrives —
+    // setLiveStage(6) is only called after runZenTravelWorkflow() resolves.
+    const t4 = setTimeout(() => setLiveStage(5), 10000);
+    stageTimers.current = [t1, t2, t3, t4];
+  };
+
+  const clearStageTimers = () => {
+    stageTimers.current.forEach(clearTimeout);
+    stageTimers.current = [];
   };
 
   const setAgent = (key: string, patch: Partial<AgentPanelEntry>) =>
@@ -167,13 +177,45 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
     panelTimers.current = [t1, t2, t3];
   };
 
-  const completePanelSimulation = () => {
+  const finalisePanelFromResult = (result: StructuredWorkflowOutput) => {
     clearPanelTimers();
+
+    // Stage: paused means GLM asked for clarification — agents never ran
+    if (result.stage === 'paused') {
+      setAgentPanel({
+        master: { status: 'running',  activityText: 'Waiting for more details…' },
+        flight: { status: 'pending',  activityText: 'Awaiting task' },
+        hotel:  { status: 'pending',  activityText: 'Awaiting task' },
+        claims: { status: 'pending',  activityText: 'Awaiting task' },
+      });
+      return;
+    }
+
+    // Map real action statuses to panel entries
+    const actionMap: Record<string, WorkflowAction | undefined> = {};
+    result.plan?.actions.forEach((a) => { actionMap[a.agent] = a; });
+
+    const toPanel = (
+      action: WorkflowAction | undefined,
+      defaultText: string,
+    ): AgentPanelEntry => {
+      if (!action) return { status: 'pending', activityText: 'Not required' };
+      if (action.status === 'completed') return { status: 'completed', activityText: action.output?.slice(0, 55) ?? defaultText };
+      if (action.status === 'failed')    return { status: 'failed',    activityText: action.error?.slice(0, 55) ?? 'Failed — will retry' };
+      if (action.status === 'skipped')   return { status: 'pending',   activityText: 'Not needed for this case' };
+      return { status: 'pending', activityText: defaultText };
+    };
+
+    const masterStatus: AgentPanelStatus = result.stage === 'failed' ? 'failed' : 'completed';
+    const masterText = result.stage === 'failed'
+      ? 'Workflow hit an error — check actions'
+      : 'Workflow orchestrated successfully';
+
     setAgentPanel({
-      master: { status: 'completed', activityText: 'Workflow orchestrated' },
-      flight: { status: 'completed', activityText: 'Flight options ready' },
-      hotel:  { status: 'completed', activityText: 'Hotels confirmed' },
-      claims: { status: 'completed', activityText: 'Claim filed' },
+      master: { status: masterStatus, activityText: masterText },
+      flight: toPanel(actionMap['flight'],        'Flight search done'),
+      hotel:  toPanel(actionMap['hotel'],         'Accommodation checked'),
+      claims: toPanel(actionMap['compensation'],  'Claim assessed'),
     });
   };
 
@@ -183,7 +225,13 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
   };
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.sender === 'ai' && (lastMsg.workflowOutput || lastMsg.specializedOutput)) {
+      // Scroll to the TOP of the AI response card so the user sees the action cards first
+      lastAiMsgRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   const getPlaceholder = () => {
@@ -196,6 +244,8 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
     setActiveAgent(agent);
     setMessages([]);
     resetPanel();
+    clearStageTimers();
+    setLiveStage(0);
   };
 
   const handleSend = async () => {
@@ -206,15 +256,21 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
     setMessages((prev) => [...prev, userMsg]);
     setInputText('');
     setIsProcessing(true);
-    if (activeAgent === 'master') runPanelSimulation();
+    if (activeAgent === 'master') {
+      runPanelSimulation();
+      runStageSimulation();
+    }
 
     try {
       if (activeAgent === 'master') {
         const result = await runZenTravelWorkflow(payload);
-        completePanelSimulation();
+        clearStageTimers();
+        // Set to 6 (beyond last stage) so all completed stages show ✓ not the pulsing ring
+        setLiveStage(result.stage === 'paused' ? 2 : 6);
+        finalisePanelFromResult(result);
         const aiMsg: Message = {
           id: ++msgId.current,
-          text: formatWorkflowOutput(result),
+          text: '',
           sender: 'ai',
           workflowOutput: result,
         };
@@ -230,7 +286,11 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
         setMessages((prev) => [...prev, aiMsg]);
       }
     } catch (error) {
-      if (activeAgent === 'master') resetPanel();
+      if (activeAgent === 'master') {
+        resetPanel();
+        clearStageTimers();
+        setLiveStage(0);
+      }
       const errorText = error instanceof Error ? error.message : 'Unknown error';
       setMessages((prev) => [
         ...prev,
@@ -314,6 +374,38 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
           </span>
         </div>
 
+        {/* ── Workflow Stage Progress (master only) ───────────────────── */}
+        {activeAgent === 'master' && liveStage > 0 && (
+          <div className="wsp-bar">
+            <span className="wsp-bar-label">ReAct Workflow</span>
+            <div className="wsp-steps">
+              {WORKFLOW_STAGES.map((stage, idx) => {
+                const isDone   = liveStage > stage.id;
+                const isActive = liveStage === stage.id;
+                return (
+                  <React.Fragment key={stage.id}>
+                    <div className={`wsp-step ${isDone ? 'wsp-step--done' : isActive ? 'wsp-step--active' : 'wsp-step--pending'}`} key={stage.id}>
+                      <div className="wsp-step-circle">
+                        {isDone ? '✓' : stage.short}
+                        {isActive && <span className="wsp-pulse" />}
+                      </div>
+                      <div className="wsp-step-text">
+                        <span className="wsp-step-name">{stage.label}</span>
+                        {(isDone || isActive) && (
+                          <span className="wsp-step-desc">{stage.desc}</span>
+                        )}
+                      </div>
+                    </div>
+                    {idx < WORKFLOW_STAGES.length - 1 && (
+                      <div className={`wsp-connector ${liveStage > stage.id ? 'wsp-connector--done' : ''}`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── Agent Activity Panel (master only) ──────────────────────── */}
         {activeAgent === 'master' && (
           <div className="aap-panel">
@@ -337,7 +429,9 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
                       <div className="aap-card-status-row">
                         <span className={`aap-status-dot aap-status-dot--${entry.status}`} />
                         <span className="aap-status-label">
-                          {entry.status === 'running' ? 'Running' : entry.status === 'completed' ? 'Completed' : 'Pending'}
+                          {entry.status === 'running'   ? 'Running'   :
+                           entry.status === 'completed' ? 'Completed' :
+                           entry.status === 'failed'    ? 'Failed'    : 'Pending'}
                         </span>
                       </div>
                       <span className="aap-activity-text">{entry.activityText}</span>
@@ -357,7 +451,7 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
             {messages.length > 0 && (
               <button
                 className="cb-clear-btn"
-                onClick={() => { setMessages([]); resetPanel(); }}
+                onClick={() => { setMessages([]); resetPanel(); clearStageTimers(); setLiveStage(0); }}
                 disabled={isProcessing}
               >
                 Clear
@@ -393,15 +487,27 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
               </div>
             ) : (
               <div className="messages-container">
-                {messages.map((msg) => (
-                  <div key={msg.id} className={`message ${msg.sender}`}>
-                    {msg.specializedOutput ? (
-                      <AgentResponseCard output={msg.specializedOutput} />
-                    ) : (
-                      <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
-                    )}
-                  </div>
-                ))}
+                {messages.map((msg, idx) => {
+                  const isLastAI =
+                    msg.sender === 'ai' &&
+                    idx === messages.length - 1 &&
+                    (!!msg.workflowOutput || !!msg.specializedOutput);
+                  return (
+                    <div
+                      key={msg.id}
+                      ref={isLastAI ? lastAiMsgRef : undefined}
+                      className={`message ${msg.sender}`}
+                    >
+                      {msg.specializedOutput ? (
+                        <AgentResponseCard output={msg.specializedOutput} />
+                      ) : msg.workflowOutput ? (
+                        <WorkflowResponseCard output={msg.workflowOutput} />
+                      ) : (
+                        <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
+                      )}
+                    </div>
+                  );
+                })}
                 {isProcessing && (
                   <div className="message ai">
                     <span className="typing-indicator">
