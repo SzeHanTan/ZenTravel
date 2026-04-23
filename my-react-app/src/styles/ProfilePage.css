@@ -1,61 +1,135 @@
-/* 容器与背景 */
-.profile-container { background: #fdfdfd; min-height: 100vh; padding-bottom: 100px; font-family: 'Serif', 'Times New Roman'; }
+/* --- 1. Global & Base Layout --- */
+.profile-container { 
+  background: #fdfdfd; 
+  min-height: 100vh; 
+  padding-bottom: 110px; 
+  font-family: 'Serif', 'Times New Roman', serif; 
+  display: flex;
+  flex-direction: column;
+}
+
 .fade-in { animation: fadeIn 0.3s ease-in; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* Header */
-.profile-header { background: #8A00E5; padding: 45px 20px 25px; color: white; position: relative; }
+/* --- 2. Headers --- */
+.profile-header { background: #8A00E5; padding: 45px 20px 35px; color: white; position: relative; }
+
+.sub-page-header { 
+  display: flex; 
+  align-items: center; 
+  gap: 15px; 
+  padding: 15px 20px; 
+  height: 60px; 
+  background: white;
+  border-bottom: 1px solid #eee;
+  box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.sub-page-header h1 { margin: 0; font-size: 20px; font-weight: 700; color: #333; }
+.back-icon { cursor: pointer; color: #333; }
+
+/* --- 3. User & Card UI --- */
 .user-profile-info { display: flex; align-items: center; gap: 15px; }
-.user-avatar { width: 75px; height: 75px; background: white; border-radius: 50%; background-size: cover; background-position: center; }
-.user-meta h2 { margin: 0; font-size: 24px; font-weight: 500; }
-.user-meta p { margin: 2px 0 0; font-size: 13px; opacity: 0.9; }
+.user-avatar { width: 75px; height: 75px; background: white; border-radius: 50%; background-size: cover; border: 2px solid rgba(255, 255, 255, 0.5); cursor: pointer; }
+.user-meta h2 { margin: 0; font-size: 24px; font-weight: 600; }
 
-/* 卡片通用 */
-.ui-card { border: 1.5px solid #334e8d; border-radius: 20px; margin: 15px; padding: 15px; background: white; }
-.ui-card-title { font-size: 11px; color: #555; margin: 0 0 10px 0; font-weight: normal; }
-.ui-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; font-size: 15px; border-bottom: 0.5px solid #eee; }
-.ui-row:last-child { border-bottom: none; }
-.ui-val { margin-left: auto; color: #444; }
-.clickable:active { background: #f0f0f0; border-radius: 8px; }
+.ui-card { border: 1.5px solid #eee; border-radius: 20px; margin: 15px; padding: 18px; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+.ui-card-title { font-size: 12px; color: #888; margin-bottom: 12px; font-weight: bold; text-transform: uppercase; }
+.ui-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #f5f5f5; font-size: 15px; color: #333; }
+.ui-val { margin-left: auto; color: #7b2cbf; font-weight: 600; }
+.clickable:active { background: #f9f9f9; border-radius: 8px; }
 
-/* Travel Achievements */
-.ui-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.see-more { color: #5c5cff; font-size: 12px; cursor: pointer; }
+/* Achievement Layout */
+.see-more { color: #5c5cff; font-size: 12px; cursor: pointer; font-weight: bold; }
 .achieve-split-layout { display: flex; align-items: center; justify-content: space-around; padding: 10px 0; }
 .achieve-item { display: flex; align-items: center; gap: 10px; }
 .achieve-item img { height: 50px; }
-.achieve-text { display: flex; flex-direction: column; }
-.achieve-text strong { font-size: 16px; }
-.achieve-text span { font-size: 12px; color: #666; }
-.v-divider { width: 1.5px; background: #999; height: 50px; }
+.achieve-text strong { font-size: 18px; color: #333; }
+.v-divider { width: 1px; background: #eee; height: 40px; }
 
-/* Logout */
-.ui-logout-btn { width: calc(100% - 40px); margin: 10px 20px; background: #e31e24; color: white; border: none; border-radius: 30px; padding: 14px; font-size: 20px; font-weight: bold; cursor: pointer; }
+/* --- 4. Sub-Page Body & Empty State --- */
+.sub-page-body {
+  background: #f5f7fa;
+  min-height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+}
 
-/* Coupon 子页面专用 */
-.zen-header { background: #8A00E5; color: white; padding: 10px 15px; font-size: 18px; font-weight: bold; }
-.sub-page-header { display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid #eee; font-size: 18px; }
-.back-icon { cursor: pointer; }
-.coupon-summary-card { border: 1px solid #334e8d; margin: 15px; border-radius: 12px; padding: 20px; }
-.inner-tag { color: #2e7d32; font-size: 12px; margin-bottom: 5px; }
-.inner-val { font-size: 28px; font-weight: bold; color: #334e8d; }
-.inner-desc { font-size: 11px; color: #777; margin-top: 10px; }
+.empty-state { 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center; 
+  padding: 80px 20px; 
+}
+.empty-bot { width: 120px; height: auto; margin-bottom: 15px; opacity: 0.8; }
+.empty-state p { font-size: 14px; color: #999; font-weight: 500; }
 
-.promo-section { padding: 20px 15px; }
-.promo-input-container { display: flex; border: 1.5px solid #8A00E5; border-radius: 10px; overflow: hidden; background: #f3e5f5; margin-top: 10px; align-items: center;}
-.promo-input-container input { flex: 1; border: none; background: transparent; padding: 12px; outline: none; }
-.search-btn { background: transparent; padding: 0 15px; cursor: pointer; color: #333; display: flex; align-items: center;}
+/* --- 5. Wallet Components --- */
+.coupon-summary-card { background: white; margin: 15px; padding: 20px; border-radius: 16px; border: 1px solid #eef0f2; }
+.inner-val { font-size: 32px; font-weight: 800; color: #333; margin: 10px 0; }
+.auto-apply-banner { background: #e8f5e9; color: #2e7d32; margin: 0 15px 20px; padding: 12px 15px; border-radius: 12px; display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 500; }
 
-.empty-state { text-align: center; padding: 60px 20px; }
-.empty-bot { width: 180px; margin-bottom: 20px; }
+.promo-input-section { padding: 0 15px 25px; }
+.promo-field { background: white; display: flex; align-items: center; border-radius: 14px; padding: 6px 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 12px; }
+.promo-field input { flex: 1; border: none; outline: none; font-size: 15px; background: transparent; }
+.promo-check-btn { background: #7b2cbf; border: none; width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
-.coupon-item { display: flex; border: 1px solid #ddd; margin: 0 15px; border-radius: 12px; overflow: hidden; height: 90px; }
-.coupon-left { background: #b8860b; color: white; width: 70px; display: flex; align-items: center; text-align: center; padding: 10px; font-size: 12px; }
-.coupon-mid { flex: 1; padding: 10px; display: flex; flex-direction: column; justify-content: center; }
-.coupon-right { width: 60px; display: flex; align-items: center; justify-content: center; border-left: 1px dashed #ddd; }
-.btn-use { background: white; border: 1px solid #ddd; border-radius: 10px; font-size: 11px; padding: 3px 10px; cursor: pointer; }
+/* --- 6. 精简展示型 Ticket UI --- */
+.ticket-container { 
+  display: flex; 
+  background: white; 
+  margin: 0 15px 15px; 
+  border-radius: 16px; 
+  height: 90px; 
+  max-width: 400px; 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+  position: relative; 
+  overflow: visible; 
+  border: 1px solid #f0f0f0;
+}
 
-/* 弹窗样式 */
-.modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 200; }
-.redeem-modal { background: white; width: 85%; border-radius: 20px; padding: 30px 20px; position: relative; border: 2px solid #8A00E5; }
-.modal-close { position: absolute; right: 15px; top: 15px; cursor: pointer; }
+.ticket-main { flex: 1; display: flex; align-items: center; padding: 0 15px; }
+.ticket-badge { 
+  width: 60px; 
+  height: 60px; 
+  background: #c19537; 
+  border-radius: 12px; 
+  color: white; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  text-align: center; 
+}
+.ticket-info { margin-left: 15px; }
+.ticket-info h3 { margin: 0; font-size: 15px; font-weight: 700; color: #1a1a1a; }
+.ticket-info p { margin: 2px 0; font-size: 11px; color: #6e7985; }
+.ticket-info small { font-size: 10px; color: #a0abb8; }
+
+.ticket-divider-end { width: 24px; position: relative; }
+.notch { 
+  width: 20px; height: 20px; 
+  background: #f5f7fa; border-radius: 50%; 
+  position: absolute; right: -10px; z-index: 5; 
+  border: 1px solid #eee;
+}
+.notch-top { top: -10px; }
+.notch-bottom { bottom: -10px; }
+
+/* --- 7. Modals --- */
+.redeem-success-modal { background: white; width: 85%; max-width: 340px; border-radius: 28px; padding: 40px 24px 30px; text-align: center; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.3); animation: modalPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+@keyframes modalPop { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+.success-circle { width: 80px; height: 80px; background: linear-gradient(135deg, #4cd964, #28a745); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 25px; }
+.success-action-btn { width: 100%; background: #7b2cbf; color: white; border: none; padding: 16px; border-radius: 16px; font-weight: 700; cursor: pointer; }
+.highlight-text { color: #7b2cbf; font-weight: 700; }
+
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+.lang-selection-modal { background: white; width: 85%; max-width: 340px; border-radius: 24px; padding: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
+.lang-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-radius: 14px; background: #f8f9fa; cursor: pointer; margin-bottom: 8px; }
+.lang-item.active { background: #f3e8ff; color: #7b2cbf; border: 1.5px solid #7b2cbf; }
+
+/* --- 8. UI Elements --- */
+.ui-logout-btn { width: calc(100% - 40px); margin: 10px 20px 40px; background: #FFF5F5; color: #FF3B30; border: 1.5px solid #FFE5E5; border-radius: 12px; padding: 16px; font-weight: bold; cursor: pointer; }
