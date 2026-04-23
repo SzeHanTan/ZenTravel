@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { ArrowLeft, X, ShieldCheck, Briefcase } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, X } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import "../styles/InsurancePage.css";
 
-export const InsurancePage: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
+export const InsurancePage = ({ setView }: { setView: (v: string) => void }) => {
   const [showBookingsModal, setShowBookingsModal] = useState(false);
   const [showPoliciesModal, setShowPoliciesModal] = useState(false);
 

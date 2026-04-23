@@ -1,0 +1,18 @@
+.language-container { background: #fff; min-height: 100vh; font-family: sans-serif; }
+.lang-header { display: flex; align-items: center; gap: 20px; padding: 15px; font-size: 18px; border-bottom: 1px solid #f0f0f0; }
+.lang-content { padding: 10px 0; }
+.lang-section-title { padding: 15px 20px 5px; font-size: 14px; color: #5f6368; font-weight: 600; }
+
+.lang-row { 
+  display: flex; 
+  align-items: center; 
+  padding: 12px 20px; 
+  cursor: pointer; 
+  transition: background 0.2s;
+}
+.lang-row:active { background: #f5f5f5; }
+
+.lang-flag { margin-right: 15px; font-size: 20px; width: 25px; text-align: center; }
+.lang-name { flex: 1; font-size: 16px; color: #3c4043; }
+.lang-name.active { color: #1a73e8; font-weight: 500; }
+.lang-check { color: #1a73e8; }

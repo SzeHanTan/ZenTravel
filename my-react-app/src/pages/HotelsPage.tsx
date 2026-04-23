@@ -1,9 +1,15 @@
+<<<<<<< HEAD
 import React, { useState } from 'react';
 import { Search, Calendar, User, ArrowLeft, X, Plus, Minus, Loader2, Star, MapPin } from 'lucide-react';
+=======
+import { useState } from 'react';
+import { Search, Calendar, User, ArrowLeft, X, Plus, Minus } from 'lucide-react';
+>>>>>>> 9ab98f8c1fac8fd9610514b539e1600881058884
 import { BottomNav } from '../components/BottomNav';
 import { getHotels } from '../services/geminiService';
 import "../styles/HotelsPage.css";
 
+<<<<<<< HEAD
 // --- Sub-Component: Results View ---
 const ResultsView = ({ hotels, destination, searchDetails, onBack }: any) => (
   <div className="results-page fade-in">
@@ -71,6 +77,10 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
   const [hotels, setHotels] = useState<any[]>([]);
 
   // --- Search Form States ---
+=======
+export const HotelsPage = ({ setView }: { setView: (v: string) => void }) => {
+  // --- Search States ---
+>>>>>>> 9ab98f8c1fac8fd9610514b539e1600881058884
   const [destination, setDestination] = useState("");
   const [startDate, setStartDate] = useState("2026-04-23");
   const [endDate, setEndDate] = useState("2026-04-24");

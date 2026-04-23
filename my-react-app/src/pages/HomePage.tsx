@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Home, Bell, Calendar, User, Search, X } from 'lucide-react'; 
+import { useState, useEffect } from 'react';
+import { Search, X } from 'lucide-react'; 
 import { db, auth } from '../services/firebase';
 import { 
   collection, 
@@ -11,7 +11,8 @@ import {
   getDocs, 
   serverTimestamp 
 } from 'firebase/firestore';
-import { BottomNav } from '../components/BottomNav';import '../App.css'; 
+import { BottomNav } from '../components/BottomNav';
+import '../App.css'; 
 import "../styles/HomePage.css";
 
 // Assets
@@ -21,18 +22,23 @@ import hotelsImg from '../assets/Hotels_pic.jpg';
 import insuranceImg from '../assets/Insurances_pic.png';
 import tripPlannerImg from '../assets/TripPlanner_pic.png';
 
+// Updated interface to include your globalCurrency
 interface HomeProps {
   setView: (v: string) => void; 
+  globalCurrency: { name: string; code: string };
 }
 
-export const HomePage: React.FC<HomeProps> = ({ setView }) => {
+export const HomePage = ({ setView, globalCurrency }: HomeProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [history, setHistory] = useState<string[]>([]);
-  const [showModal, setShowModal] = useState(false); // New state for shaded background effect
+  const [showModal, setShowModal] = useState(false); 
   
+  // Extract symbol (e.g., "RM") for display
+  const currencySymbol = globalCurrency.code.split(' | ')[0];
+
   const [recommendation] = useState({
     title: "AI RECOMMENDATION",
-    message: "Your flight to Tokyo (ZT-402) is confirmed! Since you're traveling soon, we recommend booking a hotel in the Shinjuku area and getting travel insurance for peace of mind. We've found 3 hotels matching your style and a premium insurance plan starting at $15.",
+    message: `Your flight to Tokyo (ZT-402) is confirmed! Since you're traveling soon, we recommend booking a hotel in the Shinjuku area and getting travel insurance for peace of mind. We've found 3 hotels matching your style and a premium insurance plan starting at ${currencySymbol} 65.`,
     isEmergency: false
   });
 
@@ -84,30 +90,30 @@ export const HomePage: React.FC<HomeProps> = ({ setView }) => {
       
       <main className="home-content">
         <div className="category-grid">
-        <div className="cat-box red" onClick={() => setView('hotels')}>
-            <span className="cat-label">HOTELS</span>
-            <div className="cat-img-wrapper"><img src={hotelsImg} alt="Hotels" className="cat-img-fit" /></div>
-        </div>
-        
-        <div className="cat-box orange" onClick={() => setView('flights')}>
-            <span className="cat-label">FLIGHTS</span>
-            <div className="cat-img-wrapper"><img src={flightsImg} alt="Flights" className="cat-img-fit" /></div>
-        </div>
-        
-        <div className="cat-box yellow" onClick={() => setView('insurance')}>
-            <span className="cat-label">INSURANCE</span>
-            <div className="cat-img-wrapper"><img src={insuranceImg} alt="Insurance" className="cat-img-fit" /></div>
-        </div>
-        
-        <div className="cat-box green" onClick={() => setView('tripplanner')}>
-            <span className="cat-label">TRIP PLANNER</span>
-            <div className="cat-img-wrapper"><img src={tripPlannerImg} alt="Trip Planner" className="cat-img-fit" /></div>
-        </div>
-        
-        <div className="cat-box blue" onClick={() => setView('carrental')}>
-            <span className="cat-label">CAR RENTAL</span>
-            <div className="cat-img-wrapper"><img src={carRentalImg} alt="Car Rental" className="cat-img-fit" /></div>
-        </div>
+          <div className="cat-box red" onClick={() => setView('hotels')}>
+              <span className="cat-label">HOTELS</span>
+              <div className="cat-img-wrapper"><img src={hotelsImg} alt="Hotels" className="cat-img-fit" /></div>
+          </div>
+          
+          <div className="cat-box orange" onClick={() => setView('flights')}>
+              <span className="cat-label">FLIGHTS</span>
+              <div className="cat-img-wrapper"><img src={flightsImg} alt="Flights" className="cat-img-fit" /></div>
+          </div>
+          
+          <div className="cat-box yellow" onClick={() => setView('insurance')}>
+              <span className="cat-label">INSURANCE</span>
+              <div className="cat-img-wrapper"><img src={insuranceImg} alt="Insurance" className="cat-img-fit" /></div>
+          </div>
+          
+          <div className="cat-box green" onClick={() => setView('tripplanner')}>
+              <span className="cat-label">TRIP PLANNER</span>
+              <div className="cat-img-wrapper"><img src={tripPlannerImg} alt="Trip Planner" className="cat-img-fit" /></div>
+          </div>
+          
+          <div className="cat-box blue" onClick={() => setView('carrental')}>
+              <span className="cat-label">CAR RENTAL</span>
+              <div className="cat-img-wrapper"><img src={carRentalImg} alt="Car Rental" className="cat-img-fit" /></div>
+          </div>
         </div>
 
         {/* --- Search Section --- */}

@@ -1,0 +1,135 @@
+.saved-page-root {
+  background-color: #fff;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.zen-purple-header {
+  background-color: #8600E0;
+  color: white;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-centered-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.header-icon-left {
+  cursor: pointer;
+  width: 24px;
+}
+
+.header-placeholder-right {
+  width: 24px;
+}
+
+.white-content-area {
+  flex: 1;
+  background-color: #fff;
+}
+
+.empty-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 100px;
+  text-align: center;
+}
+
+.mascot-img-center {
+  width: 120px;
+  height: auto;
+  margin-bottom: 20px;
+}
+
+.empty-msg-text {
+  color: #333;
+  font-size: 16px;
+  margin-bottom: 25px;
+}
+
+.zen-solid-purple-btn {
+  background-color: #8600E0;
+  color: white;
+  border: none;
+  padding: 12px 35px;
+  border-radius: 30px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.saved-items-grid {
+  padding: 15px;
+}
+
+.saved-item-card {
+  display: flex;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.card-image-box {
+  width: 110px;
+  height: 110px;
+  position: relative;
+}
+
+.card-image-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.heart-icon-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: white;
+  border-radius: 50%;
+  padding: 4px;
+  display: flex;
+}
+
+.card-details-box {
+  padding: 12px;
+  flex: 1;
+}
+
+.hotel-name-text {
+  margin: 0;
+  font-size: 15px;
+  color: #333;
+}
+
+.hotel-loc-text {
+  font-size: 12px;
+  color: #777;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 5px 0;
+}
+
+.hotel-price-tag {
+  color: #8600E0;
+  font-weight: bold;
+  font-size: 16px;
+}
