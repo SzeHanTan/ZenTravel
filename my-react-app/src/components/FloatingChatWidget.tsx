@@ -4,6 +4,7 @@ import { runSpecializedAgent } from '../agents/specializedAgents';
 import type { AgentType, SpecializedAgentOutput } from '../agents/specializedAgents';
 import type { StructuredWorkflowOutput } from '../agents/types';
 import { AgentResponseCard } from './AgentResponseCard';
+import { WorkflowResponseCard } from './WorkflowResponseCard';
 import '../styles/AgentResponseCard.css';
 import '../styles/FloatingChatWidget.css';
 
@@ -62,37 +63,22 @@ const AGENT_CONFIG: Record<AgentType, { label: string; color: string; placeholde
   },
 };
 
-function formatWorkflowOutput(output: StructuredWorkflowOutput): string {
-  const actionLines =
-    output.plan?.actions.map(
-      (a) =>
-        `• ${a.agent.toUpperCase()}: ${a.status}${a.output ? ` — ${a.output}` : ''}${a.error ? ` [${a.error}]` : ''}`,
-    ) ?? [];
-
-  const parts = [
-    `Stage: ${output.stage}`,
-    `Disruption: ${output.incident.disruptionType}`,
-    `Reasoning: ${output.reasoning.join(' ')}`,
-    output.clarifyingQuestions.length > 0
-      ? `Clarification needed:\n${output.clarifyingQuestions.map((q) => `• ${q}`).join('\n')}`
-      : null,
-    actionLines.length > 0 ? `Actions:\n${actionLines.join('\n')}` : null,
-    `Outcome: ${output.finalMessage}`,
-  ];
-
-  return parts.filter(Boolean).join('\n\n');
-}
-
 export const FloatingChatWidget: React.FC<FloatingChatWidgetProps> = ({ onClose, onOpenFull }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeAgent, setActiveAgent] = useState<ActiveAgent>('master');
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatEndRef   = useRef<HTMLDivElement>(null);
+  const lastAiMsgRef = useRef<HTMLDivElement>(null);
   const msgId = useRef(0);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.sender === 'ai' && (lastMsg.workflowOutput || lastMsg.specializedOutput)) {
+      lastAiMsgRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   const getPlaceholder = () => {
@@ -119,12 +105,7 @@ export const FloatingChatWidget: React.FC<FloatingChatWidgetProps> = ({ onClose,
         const result = await runZenTravelWorkflow(payload);
         setMessages((prev) => [
           ...prev,
-          {
-            id: ++msgId.current,
-            text: formatWorkflowOutput(result),
-            sender: 'ai',
-            workflowOutput: result,
-          },
+          { id: ++msgId.current, text: '', sender: 'ai', workflowOutput: result },
         ]);
       } else {
         const result = await runSpecializedAgent(activeAgent, payload);
@@ -213,15 +194,27 @@ export const FloatingChatWidget: React.FC<FloatingChatWidgetProps> = ({ onClose,
             </div>
           ) : (
             <>
-              {messages.map((msg) => (
-                <div key={msg.id} className={`fcw-msg fcw-msg-${msg.sender}`}>
-                  {msg.specializedOutput ? (
-                    <AgentResponseCard output={msg.specializedOutput} />
-                  ) : (
-                    <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
-                  )}
-                </div>
-              ))}
+              {messages.map((msg, idx) => {
+                const isLastAI =
+                  msg.sender === 'ai' &&
+                  idx === messages.length - 1 &&
+                  (!!msg.workflowOutput || !!msg.specializedOutput);
+                return (
+                  <div
+                    key={msg.id}
+                    ref={isLastAI ? lastAiMsgRef : undefined}
+                    className={`fcw-msg fcw-msg-${msg.sender}`}
+                  >
+                    {msg.workflowOutput ? (
+                      <WorkflowResponseCard output={msg.workflowOutput} />
+                    ) : msg.specializedOutput ? (
+                      <AgentResponseCard output={msg.specializedOutput} />
+                    ) : (
+                      <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
+                    )}
+                  </div>
+                );
+              })}
               {isProcessing && (
                 <div className="fcw-msg fcw-msg-ai">
                   <span className="fcw-typing">
