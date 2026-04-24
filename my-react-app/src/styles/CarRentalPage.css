@@ -545,6 +545,25 @@
     font-weight: 600;
 }
 
+.transport-transfer-highlights {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.transport-transfer-highlights span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: #f6efff;
+    color: #5a189a;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
 .transport-route-box {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
