@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { auth } from '../services/firebase';
+import { buildEmailPayload, sendRecoveryEmail } from '../services/emailService';
 import type { StructuredWorkflowOutput, WorkflowAction } from '../agents/types';
 
 const STAGES = [
@@ -142,7 +144,9 @@ export const WorkflowResponseCard: React.FC<Props> = ({ output }) => {
   const [showReasoning, setShowReasoning] = useState(false);
   const [approved,  setApproved]  = useState<Record<string, boolean>>({});
   const [rejected,  setRejected]  = useState<Record<string, boolean>>({});
-  const [allExecuted, setAllExecuted] = useState(false);
+  const [emailedTo,   setEmailedTo]   = useState<string | null>(null);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailMethod,  setEmailMethod]  = useState<'emailjs' | 'mailto' | null>(null);
 
   const disruption = DISRUPTION_META[output.incident.disruptionType] ?? DISRUPTION_META.unknown;
   const isPaused    = output.stage === 'paused';
@@ -154,7 +158,20 @@ export const WorkflowResponseCard: React.FC<Props> = ({ output }) => {
   ) ?? [];
   const allDecided    = executableActions.length > 0 &&
     executableActions.every((a) => approved[a.id] || rejected[a.id]);
-  const approvedCount = executableActions.filter((a) => approved[a.id]).length;
+  const approvedActions = executableActions.filter((a) => approved[a.id]);
+  const approvedCount   = approvedActions.length;
+
+  const handleExecute = async () => {
+    setEmailSending(true);
+    const userEmail   = auth.currentUser?.email   ?? '';
+    const userName    = auth.currentUser?.displayName ?? '';
+    const approvedList = executableActions.filter((a) => approved[a.id]);
+    const payload = buildEmailPayload(output, approvedList, userEmail, userName);
+    const result  = await sendRecoveryEmail(payload);
+    setEmailMethod(result.method);
+    setEmailedTo(userEmail || 'your registered email');
+    setEmailSending(false);
+  };
 
   return (
     <div className="wrc2-card">
@@ -201,7 +218,7 @@ export const WorkflowResponseCard: React.FC<Props> = ({ output }) => {
       {/* ── Completed: strategy approval ──────────── */}
       {isCompleted && output.plan && (
         <div className="wrc2-strategies-section">
-          {!allExecuted ? (
+          {emailedTo === null ? (
             <>
               <div className="wrc2-strategies-header">
                 <span className="wrc2-strategies-title">🛡️ Recovery Plan — Review & Approve</span>
@@ -222,21 +239,42 @@ export const WorkflowResponseCard: React.FC<Props> = ({ output }) => {
               </div>
 
               {allDecided && (
-                <button className="wrc2-execute-btn" onClick={() => setAllExecuted(true)}>
-                  ✅ Execute {approvedCount} Approved Action{approvedCount !== 1 ? 's' : ''}
+                <button
+                  className="wrc2-execute-btn"
+                  onClick={() => void handleExecute()}
+                  disabled={emailSending}
+                >
+                  {emailSending
+                    ? '⏳ Sending recovery email…'
+                    : `📧 Execute & Email Recovery Plan (${approvedCount} action${approvedCount !== 1 ? 's' : ''})`}
                 </button>
               )}
             </>
           ) : (
             <div className="wrc2-executed-banner">
-              <span className="wrc2-executed-icon">✅</span>
+              <span className="wrc2-executed-icon">📧</span>
               <div>
                 <p className="wrc2-executed-title">
-                  {approvedCount} action{approvedCount !== 1 ? 's' : ''} approved (demo simulation)
+                  {emailMethod === 'emailjs'
+                    ? `Recovery plan delivered to ${emailedTo}`
+                    : `Recovery email prepared for ${emailedTo}`}
                 </p>
                 <p className="wrc2-executed-sub">
-                  This is a hackathon demo — actions are simulated and no real bookings, emails, or claims are submitted.
+                  {emailMethod === 'emailjs'
+                    ? `${approvedCount} approved action${approvedCount !== 1 ? 's' : ''} sent via ZenTravel AI. Check your inbox.`
+                    : `Your email client has opened with the full recovery summary. Please click Send to dispatch it.`}
                 </p>
+                <button
+                  className="wrc2-resend-btn"
+                  onClick={() => {
+                    const list = executableActions.filter((a) => approved[a.id]);
+                    const userName = auth.currentUser?.displayName ?? '';
+                    const payload  = buildEmailPayload(output, list, emailedTo ?? '', userName);
+                    void sendRecoveryEmail(payload);
+                  }}
+                >
+                  ↗ Resend Email
+                </button>
               </div>
             </div>
           )}
