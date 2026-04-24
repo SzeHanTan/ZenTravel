@@ -14,6 +14,8 @@ import type { ExtractedIncident, WorkflowAction, WorkflowFailure } from './types
 export interface ToolPlan {
   reasoning: string;
   tools: ToolCallPlan[];
+  /** Set when the planner chose tools via GLM vs rule fallback */
+  plannerSource?: 'glm' | 'rules';
 }
 
 export interface SynthesisResult {
@@ -36,12 +38,26 @@ export interface ReActResult {
 
 // ─── ReAct Step 1: Planning ──────────────────────────────────────────────────
 
-// Tool planning: GLM picks which tools to run. Since the fallback plan covers
-// the standard case perfectly, we skip GLM here entirely and always use the
-// rule-based planner — it's deterministic, instant, and correct.
-export async function planToolCalls(incident: ExtractedIncident): Promise<ToolPlan> {
-  // Rule-based plan: always search flights + compensation; add hotel for delays
-  const tools: import('../services/mockTravelAPI').ToolCallPlan[] = [
+const VALID_TOOLS = new Set(['search_flights', 'search_hotels', 'check_compensation']);
+
+const TOOL_PLANNER_SYSTEM = `You are ZenTravel's recovery planner. Given a structured travel disruption incident (JSON), decide which mock APIs to call to help the traveller.
+
+Allowed tools and params:
+- search_flights: { "from": city or IATA, "to": city or IATA, "count": 1-5 }
+- search_hotels: { "airport": city or IATA near where they need a room }
+- check_compensation: { "type": "delay"|"cancellation"|"lost_luggage"|"unknown" }
+
+Guidelines:
+- Include check_compensation whenever passenger rights may apply.
+- Include search_flights when they need alternatives or rebooking context.
+- Include search_hotels for cancellations, long delays likely to require overnight stay, or stranded situations; often skip for brief delays or pure lost-luggage unless they need a hotel.
+- Prefer incident.origin/destination when provided; use sensible hubs (e.g. KUL) only if unknown.
+
+Return ONLY valid JSON (no markdown):
+{"reasoning":"2-5 sentences explaining the plan","tools":[{"tool":"search_flights","params":{"from":"...","to":"...","count":3}},...]}`;
+
+function ruleBasedToolPlan(incident: ExtractedIncident): ToolPlan {
+  const tools: ToolCallPlan[] = [
     {
       tool: 'search_flights',
       params: { from: incident.origin || 'KUL', to: incident.destination || 'SIN', count: 3 },
@@ -62,7 +78,108 @@ export async function planToolCalls(incident: ExtractedIncident): Promise<ToolPl
   return {
     reasoning: `Rule-based plan for ${incident.disruptionType}: search flights from ${incident.origin || 'KUL'} to ${incident.destination || 'destination'}, check compensation, ${incident.disruptionType !== 'lost_luggage' ? 'find nearby hotels.' : '(no hotel search for luggage issues).'}`,
     tools,
+    plannerSource: 'rules',
   };
+}
+
+function parseGLMToolPlan(raw: string): { reasoning: string; tools: ToolCallPlan[] } | null {
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+  try {
+    const parsed = JSON.parse(jsonMatch[0]) as { reasoning?: string; tools?: unknown };
+    if (!Array.isArray(parsed.tools)) return null;
+    const tools: ToolCallPlan[] = [];
+    for (const item of parsed.tools) {
+      if (!item || typeof item !== 'object') continue;
+      const t = item as { tool?: string; params?: Record<string, string | number | boolean> };
+      if (!t.tool || !VALID_TOOLS.has(t.tool)) continue;
+      tools.push({ tool: t.tool, params: t.params && typeof t.params === 'object' ? t.params : {} });
+    }
+    if (tools.length === 0) return null;
+    return {
+      reasoning: typeof parsed.reasoning === 'string' && parsed.reasoning.trim()
+        ? parsed.reasoning.trim()
+        : 'GLM planner selected tools for this incident.',
+      tools,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeToolPlan(incident: ExtractedIncident, plan: ToolPlan): ToolPlan {
+  const fromDefault = incident.origin || 'KUL';
+  const toDefault = incident.destination || 'SIN';
+  const airportDefault = incident.destination || incident.origin || 'KUL';
+
+  const tools = plan.tools.map((call) => {
+    const p = call.params ?? {};
+    switch (call.tool) {
+      case 'search_flights':
+        return {
+          tool: 'search_flights' as const,
+          params: {
+            from: String(p.from ?? p.origin ?? fromDefault),
+            to: String(p.to ?? p.destination ?? toDefault),
+            count: Math.min(5, Math.max(1, Number(p.count ?? 3))),
+          },
+        };
+      case 'search_hotels':
+        return {
+          tool: 'search_hotels' as const,
+          params: {
+            airport: String(p.airport ?? p.from ?? p.origin ?? airportDefault),
+          },
+        };
+      case 'check_compensation':
+        return {
+          tool: 'check_compensation' as const,
+          params: {
+            type: String(p.type ?? p.disruption_type ?? incident.disruptionType ?? 'unknown'),
+          },
+        };
+      default:
+        return call;
+    }
+  });
+
+  return { ...plan, tools };
+}
+
+/** GLM reasons about which tools to run; falls back to deterministic rules if GLM is unavailable or invalid. */
+export async function planToolCalls(incident: ExtractedIncident): Promise<ToolPlan> {
+  const glm = createGLMClientFromEnv();
+  if (glm) {
+    try {
+      const incidentJson = JSON.stringify({
+        summary: incident.summary,
+        disruptionType: incident.disruptionType,
+        flightNumber: incident.flightNumber ?? null,
+        origin: incident.origin ?? null,
+        destination: incident.destination ?? null,
+        missingFields: incident.missingFields,
+      });
+      const raw = await glm.complete(
+        [
+          { role: 'system', content: TOOL_PLANNER_SYSTEM },
+          { role: 'user', content: incidentJson },
+        ],
+        900,
+      );
+      const parsed = parseGLMToolPlan(raw);
+      if (parsed) {
+        return sanitizeToolPlan(incident, {
+          reasoning: parsed.reasoning,
+          tools: parsed.tools,
+          plannerSource: 'glm',
+        });
+      }
+    } catch (err) {
+      console.warn('[tools] GLM tool planning failed, using rules:', (err as Error).message);
+    }
+  }
+
+  return ruleBasedToolPlan(incident);
 }
 
 
@@ -125,6 +242,7 @@ export async function synthesiseResults(incident: ExtractedIncident, toolResults
   let observe = `APIs returned ${toolResults.length} data set(s) for the disruption.`;
   let traveller_summary = 'Here are your recovery options. Please review and approve the plan below.';
 
+  let narrativeUsedGLM = false;
   if (glm) {
     try {
       const toolSummary = toolResults.map((r) => r.tool).join(', ');
@@ -139,8 +257,10 @@ export async function synthesiseResults(incident: ExtractedIncident, toolResults
       if (sentences.length >= 2) {
         observe = sentences[0];
         traveller_summary = sentences.slice(1).join(' ');
+        narrativeUsedGLM = true;
       } else if (sentences.length === 1) {
         observe = sentences[0];
+        narrativeUsedGLM = true;
       }
     } catch (err) {
       console.warn('[tools] GLM narrative failed, using defaults:', (err as Error).message);
@@ -154,7 +274,7 @@ export async function synthesiseResults(incident: ExtractedIncident, toolResults
     compensation_summary: compSummary,
     compensation_email:   compEmail,
     traveller_summary,
-    usedGLM: !!glm,
+    usedGLM: narrativeUsedGLM,
   };
 }
 
@@ -192,8 +312,9 @@ export async function runReActOrchestration(incident: ExtractedIncident): Promis
 
   const actions = synthesisToActions(synthesis);
 
+  const plannerLabel = toolPlan.plannerSource === 'glm' ? 'GLM' : 'rules';
   const reactSteps = [
-    `[REASON] ${toolPlan.reasoning}`,
+    `[REASON — ${plannerLabel}] ${toolPlan.reasoning}`,
     `[ACT] Executed: ${toolResults.map((r) => r.tool).join(', ')}`,
     `[OBSERVE] ${synthesis.observe}`,
   ];
