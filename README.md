@@ -1,7 +1,12 @@
 <!-- App Logo -->
-<div align="center">
-  <img src="my-react-app/src/assets/zentravel_logo.png" alt="ZenTravel Logo" width="120"/>
-</div>
+<p align="center">
+  <img 
+    src="my-react-app/src/assets/zentravel_logo.png" 
+    alt="ZenTravel Logo" 
+    width="120"
+    style="border-radius: 50%; object-fit: cover;"
+  />
+</p>
 
 <div align="center">
 
@@ -65,6 +70,7 @@ npm run dev
 
 ### 🛠️ Technology Stack
 | Layer |	Technology |
+|------|-----------|
 |**📱 Frontend** |	React 19 (TypeScript), Vite, Tailwind CSS |
 |**☁️ Backend / BaaS** |	Firebase (Authentication, Firestore, Storage) |
 |**🤖 AI / Orchestrator** |	Z.AI GLM 5.1 (via ILMU OpenAI-compatible API) |
@@ -82,8 +88,12 @@ npm run dev
 The Brain Master orchestrator follows a tightly controlled pipeline to ensure AI reasoning stays grounded and actionable:
 
 **Stage 1 (Input Agent):** Extracts structured JSON from text, OCR, and PDF evidence
+
 **Stage 2 (Validation):** Pauses workflow if critical fields are missing and prompts for clarification
-**Stages 3–5 (ReAct Planner):** GLM decides which mock APIs (Flights, Hotels, Claims) to call, executes them, and observes results
+
+**Stages 3–5 (ReAct Planner):** GLM decides which mock APIs (Flights, Hotels, Claims) to call, executes them, and 
+observes results
+
 **Stage 6 (Strategy):** Generates a final human-readable recovery strategy and plan of action
 
 ### 2. Human-in-the-Loop Approval
@@ -111,16 +121,23 @@ Each agent follows a strict JSON output contract to ensure consistent UI renderi
 The primary feature of ZenTravel follows a sophisticated orchestration flow:
 
 → Multi-modal intake: Supports raw text, image OCR, and PDF parsing via a custom visionService
+
 → Context persistence: Allows the agent to resume after user clarification without losing progress
+
 → Safety truncation: Input is capped at 8,000 characters to ensure token efficiency and reduce hallucination
+
 → Fallback logic: Regex-based extraction triggers if the GLM API fails or times out
 
 ### 📅 AI Trip Planner
+
 → Itinerary generation: Combines destination databases with GLM-generated narratives for day-by-day planning
+
 → PDF export: Uses jsPDF for offline access with sanitized text
 
 ### 🏨 Smart Booking & Recommendations
+
 → Deterministic mock APIs: Provides repeatable flights, hotels, and compensation outcomes for reliable demos
+
 → Automated recommendations: Detects "Cancelled" status in Firestore and suggests alternative routes or accommodations
 
 ---
