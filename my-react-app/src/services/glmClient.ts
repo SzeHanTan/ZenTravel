@@ -29,10 +29,11 @@ const ILMU_MODEL   = import.meta.env.VITE_GLM_MODEL ?? 'ilmu-glm-5.1';
 // chain-of-thought before writing the answer.  Each call needs a generous token
 // budget so the model can finish reasoning AND produce visible output.
 // Rule of thumb: target_output_tokens × 4 ≈ safe max_tokens value.
-// ilmu-glm-5.1 generates ~40 tokens/s. With max_tokens=1200 that's ~30s
-// before the first visible token appears, so we need at least 40s headroom.
-const CLIENT_TIMEOUT_MS = 40_000;
-const MAX_RETRIES       = 1;
+// ilmu-glm-5.1 generates ~40 tokens/s. Larger max_tokens + thinking can exceed 40s.
+const CLIENT_TIMEOUT_MS = 90_000;
+/** Thinking models may consume the entire completion budget in internal reasoning; floor avoids trivially short caps. */
+const THINKING_MODEL_MIN_MAX_TOKENS = 1024;
+const MAX_RETRIES = 2;
 
 export class GLMClient {
   private readonly apiKey: string;
@@ -43,9 +44,10 @@ export class GLMClient {
 
   async complete(
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: MessageContent }>,
-    maxTokens = 400,
+    maxTokens = THINKING_MODEL_MIN_MAX_TOKENS,
   ): Promise<string> {
     let lastErr: Error = new Error('Unknown error');
+    let tokenBudget = Math.max(maxTokens, THINKING_MODEL_MIN_MAX_TOKENS);
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       if (attempt > 0) {
@@ -68,7 +70,7 @@ export class GLMClient {
             model:       ILMU_MODEL,
             messages,
             temperature: 0,      // 0 = least exploratory thinking, fastest output
-            max_tokens:  maxTokens,
+            max_tokens:  tokenBudget,
           }),
         });
 
@@ -91,7 +93,9 @@ export class GLMClient {
           throw new Error(`ILMU API error: ${data.error.message}`);
         }
 
-        const msg = data.choices?.[0]?.message;
+        const choice = data.choices?.[0];
+        const msg = choice?.message;
+        const finishReason = choice?.finish_reason;
 
         // GLM-5.1 is a thinking model: the visible reply is in `content` but
         // when the model "thinks" heavily, `content` may be null/empty while
@@ -102,10 +106,19 @@ export class GLMClient {
           '';
 
         if (!content) {
-          // Log for debugging without crashing — retry once
+          // Entire completion budget spent on internal reasoning — no `content` yet
+          if (finishReason === 'length' && attempt < MAX_RETRIES) {
+            const next = Math.min(Math.max(tokenBudget * 2, THINKING_MODEL_MIN_MAX_TOKENS * 2), 8192);
+            console.warn(
+              `[GLMClient] finish_reason=length with empty content; retrying with max_tokens ${tokenBudget} → ${next}`,
+            );
+            tokenBudget = next;
+            lastErr = new Error('ILMU hit max_tokens before visible output; retrying with larger budget.');
+            continue;
+          }
           console.warn('[GLMClient] Empty response body:', JSON.stringify(data).slice(0, 300));
           lastErr = new Error('ILMU returned an empty response. Please try again.');
-          continue; // trigger retry
+          continue;
         }
 
         return content;
