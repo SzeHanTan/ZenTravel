@@ -56,10 +56,11 @@ export type ToolResult =
 const CITY_TO_IATA: Record<string, string> = {
   // Malaysia
   'kuala lumpur': 'KUL', 'kl': 'KUL', 'klia': 'KUL', 'kul': 'KUL',
-  'penang': 'PEN', 'pen': 'PEN', 'george town': 'PEN',
-  'kota kinabalu': 'BKI', 'bki': 'BKI',
-  'johor bahru': 'JHB', 'jhb': 'JHB',
-  'langkawi': 'LGK', 'lgk': 'LGK',
+  'mly': 'KUL', 'malaysia': 'KUL', 'msia': 'KUL', // 🚀 Added "mly" mapping
+  'penang': 'PEN', 'pen': 'PEN',
+  'bali': 'DPS', 'denpasar': 'DPS', 'dps': 'DPS',
+  'london': 'LHR', 'lhr': 'LHR', 'heathrow': 'LHR',
+  'tokyo': 'NRT', 'narita': 'NRT', 'nrt': 'NRT',
   // Japan
   'tokyo': 'NRT', 'narita': 'NRT', 'nrt': 'NRT',
   'haneda': 'HND', 'hnd': 'HND',
@@ -109,50 +110,104 @@ const CITY_TO_IATA: Record<string, string> = {
 };
 
 export function toIATA(city: string): string {
-  return CITY_TO_IATA[city.toLowerCase().trim()] ?? city.toUpperCase().slice(0, 3);
+  const normalized = city.toLowerCase().trim();
+  // Check the dictionary first, then fallback to first 3 letters
+  return CITY_TO_IATA[normalized] ?? city.toUpperCase().slice(0, 3);
 }
 
 // ─── Route → airline + flight data ───────────────────────────────────────────
 
-interface RouteData {
+// --- Updated Types ---
+export interface RouteData {
   airlines: Array<{ code: string; name: string }>;
   basePriceMYR: number;
+  durationMins: number; // Duration in minutes for calculation
 }
 
 const ROUTES: Record<string, RouteData> = {
-  // KUL → Asia
-  'KUL-NRT': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'NH', name: 'ANA' }, { code: 'D7', name: 'AirAsia X' }], basePriceMYR: 580 },
-  'KUL-HND': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'JL', name: 'JAL' }, { code: 'D7', name: 'AirAsia X' }], basePriceMYR: 600 },
-  'KUL-KIX': { airlines: [{ code: 'D7', name: 'AirAsia X' }, { code: 'MH', name: 'Malaysia Airlines' }, { code: 'JL', name: 'JAL' }], basePriceMYR: 520 },
-  'KUL-SIN': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'AK', name: 'AirAsia' }, { code: 'SQ', name: 'Singapore Airlines' }], basePriceMYR: 180 },
-  'KUL-BKK': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'AK', name: 'AirAsia' }, { code: 'TG', name: 'Thai Airways' }], basePriceMYR: 250 },
-  'KUL-CGK': { airlines: [{ code: 'AK', name: 'AirAsia' }, { code: 'MH', name: 'Malaysia Airlines' }, { code: 'GA', name: 'Garuda Indonesia' }], basePriceMYR: 220 },
-  'KUL-DPS': { airlines: [{ code: 'AK', name: 'AirAsia' }, { code: 'D7', name: 'AirAsia X' }, { code: 'MH', name: 'Malaysia Airlines' }], basePriceMYR: 350 },
-  'KUL-MNL': { airlines: [{ code: 'AK', name: 'AirAsia' }, { code: 'MH', name: 'Malaysia Airlines' }, { code: 'PR', name: 'Philippine Airlines' }], basePriceMYR: 290 },
-  'KUL-SGN': { airlines: [{ code: 'AK', name: 'AirAsia' }, { code: 'MH', name: 'Malaysia Airlines' }, { code: 'VN', name: 'Vietnam Airlines' }], basePriceMYR: 210 },
-  'KUL-ICN': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'KE', name: 'Korean Air' }, { code: 'OZ', name: 'Asiana' }], basePriceMYR: 650 },
-  'KUL-HKG': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'CX', name: 'Cathay Pacific' }, { code: 'AK', name: 'AirAsia' }], basePriceMYR: 400 },
-  'KUL-PVG': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'MU', name: 'China Eastern' }, { code: 'AK', name: 'AirAsia' }], basePriceMYR: 480 },
-  // KUL → Middle East
-  'KUL-DXB': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'EK', name: 'Emirates' }, { code: 'FZ', name: 'flydubai' }], basePriceMYR: 1100 },
-  'KUL-DOH': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'QR', name: 'Qatar Airways' }], basePriceMYR: 1050 },
-  'KUL-IST': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'TK', name: 'Turkish Airlines' }], basePriceMYR: 1300 },
-  // KUL → Europe
-  'KUL-FRA': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'LH', name: 'Lufthansa' }, { code: 'EK', name: 'Emirates via DXB' }], basePriceMYR: 2100 },
-  'KUL-MUC': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'LH', name: 'Lufthansa' }, { code: 'QR', name: 'Qatar Airways via DOH' }], basePriceMYR: 2050 },
-  'KUL-BER': { airlines: [{ code: 'EK', name: 'Emirates via DXB' }, { code: 'QR', name: 'Qatar Airways via DOH' }, { code: 'TK', name: 'Turkish Airlines via IST' }], basePriceMYR: 2200 },
-  'KUL-LHR': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'EK', name: 'Emirates via DXB' }, { code: 'QR', name: 'Qatar Airways via DOH' }], basePriceMYR: 2300 },
-  'KUL-CDG': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'AF', name: 'Air France' }, { code: 'EK', name: 'Emirates via DXB' }], basePriceMYR: 2250 },
-  'KUL-AMS': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'KL', name: 'KLM' }, { code: 'QR', name: 'Qatar Airways via DOH' }], basePriceMYR: 2150 },
-  // KUL → Oceania
-  'KUL-SYD': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'QF', name: 'Qantas' }, { code: 'D7', name: 'AirAsia X' }], basePriceMYR: 1400 },
-  'KUL-MEL': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'QF', name: 'Qantas' }, { code: 'D7', name: 'AirAsia X' }], basePriceMYR: 1350 },
+  // --- MALAYSIA DOMESTIC ---
+  'KUL-PEN': { airlines: [{ code: 'AK', name: 'AirAsia' }, { code: 'MH', name: 'Malaysia Airlines' }], basePriceMYR: 120, durationMins: 60 },
+  'KUL-LGK': { airlines: [{ code: 'AK', name: 'AirAsia' }, { code: 'OD', name: 'Batik Air' }], basePriceMYR: 150, durationMins: 65 },
+  'KUL-BKI': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'AK', name: 'AirAsia' }], basePriceMYR: 350, durationMins: 165 },
+  'KUL-KCH': { airlines: [{ code: 'AK', name: 'AirAsia' }, { code: 'MH', name: 'Malaysia Airlines' }], basePriceMYR: 300, durationMins: 105 },
+
+  // --- SOUTH & NORTH ASIA ---
+  'KUL-SIN': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'AK', name: 'AirAsia' }, { code: 'SQ', name: 'Singapore Airlines' }], basePriceMYR: 180, durationMins: 65 },
+  'KUL-BKK': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'TG', name: 'Thai Airways' }], basePriceMYR: 250, durationMins: 130 },
+  'KUL-TPE': { airlines: [{ code: 'CI', name: 'China Airlines' }, { code: 'BR', name: 'EVA Air' }, { code: 'D7', name: 'AirAsia X' }], basePriceMYR: 650, durationMins: 285 },
+  'KUL-HKG': { airlines: [{ code: 'CX', name: 'Cathay Pacific' }, { code: 'MH', name: 'Malaysia Airlines' }], basePriceMYR: 550, durationMins: 240 },
+  'KUL-ICN': { airlines: [{ code: 'KE', name: 'Korean Air' }, { code: 'MH', name: 'Malaysia Airlines' }, { code: 'D7', name: 'AirAsia X' }], basePriceMYR: 680, durationMins: 395 },
+  'KUL-NRT': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'NH', name: 'ANA' }, { code: 'JL', name: 'JAL' }], basePriceMYR: 850, durationMins: 435 },
+  'KUL-PVG': { airlines: [{ code: 'MU', name: 'China Eastern' }, { code: 'MH', name: 'Malaysia Airlines' }], basePriceMYR: 700, durationMins: 320 },
+
+  // --- MIDDLE EAST ---
+  'KUL-DXB': { airlines: [{ code: 'EK', name: 'Emirates' }, { code: 'MH', name: 'Malaysia Airlines' }], basePriceMYR: 1800, durationMins: 430 },
+  'KUL-DOH': { airlines: [{ code: 'QR', name: 'Qatar Airways' }, { code: 'MH', name: 'Malaysia Airlines' }], basePriceMYR: 1750, durationMins: 450 },
+  'KUL-IST': { airlines: [{ code: 'TK', name: 'Turkish Airlines' }], basePriceMYR: 2100, durationMins: 680 },
+
+  // --- EUROPE ---
+  'KUL-LHR': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'BA', name: 'British Airways' }], basePriceMYR: 2800, durationMins: 830 },
+  'KUL-CDG': { airlines: [{ code: 'AF', name: 'Air France' }, { code: 'EK', name: 'Emirates (Via DXB)' }], basePriceMYR: 2600, durationMins: 810 },
+  'KUL-FRA': { airlines: [{ code: 'LH', name: 'Lufthansa' }, { code: 'QR', name: 'Qatar (Via DOH)' }], basePriceMYR: 2550, durationMins: 790 },
+  'KUL-AMS': { airlines: [{ code: 'KL', name: 'KLM' }, { code: 'MH', name: 'Malaysia Airlines' }], basePriceMYR: 2700, durationMins: 820 },
+
+  // --- OCEANIA ---
+  'KUL-SYD': { airlines: [{ code: 'QF', name: 'Qantas' }, { code: 'MH', name: 'Malaysia Airlines' }, { code: 'D7', name: 'AirAsia X' }], basePriceMYR: 1400, durationMins: 505 },
+  'KUL-MEL': { airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'QF', name: 'Qantas' }], basePriceMYR: 1350, durationMins: 495 },
+  'KUL-PER': { airlines: [{ code: 'AK', name: 'AirAsia' }, { code: 'MH', name: 'Malaysia Airlines' }], basePriceMYR: 800, durationMins: 340 },
+  'KUL-AKL': { airlines: [{ code: 'NZ', name: 'Air New Zealand' }, { code: 'MH', name: 'Malaysia Airlines' }], basePriceMYR: 2200, durationMins: 630 },
+
+  // --- NORTH AMERICA (Direct or Via Hub) ---
+  'KUL-JFK': { airlines: [{ code: 'QR', name: 'Qatar Airways' }, { code: 'SQ', name: 'Singapore Airlines' }], basePriceMYR: 3500, durationMins: 1260 }, // ~21 hours total
+  'KUL-LAX': { airlines: [{ code: 'CX', name: 'Cathay Pacific' }, { code: 'JL', name: 'JAL' }], basePriceMYR: 3200, durationMins: 1140 }, // ~19 hours total
+  'KUL-YVR': { airlines: [{ code: 'AC', name: 'Air Canada' }], basePriceMYR: 3300, durationMins: 1080 },
 };
 
 const DEFAULT_ROUTE: RouteData = {
-  airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'AK', name: 'AirAsia' }, { code: 'OD', name: 'Batik Air' }],
+  airlines: [{ code: 'MH', name: 'Malaysia Airlines' }, { code: 'AK', name: 'AirAsia' }],
   basePriceMYR: 500,
+  durationMins: 240,
 };
+
+// --- Helper: Calculate Arrival Time ---
+const calculateArrival = (departTime: string, durationMins: number) => {
+  const [h, m] = departTime.split(':').map(Number);
+  let totalMins = h * 60 + m + durationMins;
+  const arrivalH = Math.floor(totalMins / 60) % 24;
+  const arrivalM = totalMins % 60;
+  const nextDay = totalMins >= 1440 ? ' (+1)' : '';
+  return `${String(arrivalH).padStart(2, '0')}:${String(arrivalM).padStart(2, '0')}${nextDay}`;
+};
+
+// --- Updated Search Function ---
+export async function searchFlights(fromRaw: string, toRaw: string, selectedClass: string) {
+  await new Promise((r) => setTimeout(r, 400));
+  
+  const from = toIATA(fromRaw);
+  const to = toIATA(toRaw);
+  const routeKey = `${from}-${to}`;
+  const route = ROUTES[routeKey] ?? DEFAULT_ROUTE;
+  
+  // Varied departure times for a realistic list
+  const startTimes = ["07:30", "11:15", "15:45", "22:10"];
+  const durationStr = `${Math.floor(route.durationMins / 60)}h ${route.durationMins % 60}m`;
+
+  return route.airlines.map((al, i) => {
+    const depart = startTimes[i] || "09:00";
+    return {
+      airline: al.name,
+      flightNumber: `${al.code}${100 + i * 23}`,
+      from,
+      to,
+      timeDepart: depart,
+      timeLanding: calculateArrival(depart, route.durationMins),
+      duration: durationStr,
+      priceMYR: Math.round(route.basePriceMYR * (1 + i * 0.15)),
+      cabin: selectedClass,
+      recommended: i === 0
+    };
+  });
+}
 
 // ─── Airport hotel database ───────────────────────────────────────────────────
 
@@ -320,43 +375,6 @@ const COMPENSATION: Record<string, CompensationResult> = {
 };
 
 // ─── Public API functions ──────────────────────────────────────────────────────
-
-export async function searchFlights(
-  fromRaw: string,
-  toRaw:   string,
-  count = 3,
-): Promise<FlightOffer[]> {
-  await new Promise((r) => setTimeout(r, 300));
-
-  const from     = toIATA(fromRaw);
-  const to       = toIATA(toRaw);
-  const route    = ROUTES[`${from}-${to}`] ?? DEFAULT_ROUTE;
-  const base     = route.basePriceMYR;
-  const carriers = route.airlines.slice(0, count);
-
-  // Deterministic but varied flight numbers per route
-  const seed = from.charCodeAt(0) + to.charCodeAt(0);
-
-  return carriers.map((al, i) => {
-    const num      = (seed * 3 + i * 41 + 100) % 900 + 100;
-    const hoursOut = 3 + i * 3;
-    const mins     = [0, 25, 50][i] ?? 0;
-    const price    = i === 2 ? Math.round(base * 3.2) : Math.round(base * (1 - i * 0.12));
-
-    return {
-      flightNumber: `${al.code}${num}`,
-      airline:      al.name,
-      from,
-      to,
-      departIn:     `+${hoursOut}h${mins > 0 ? ` ${mins}m` : ''}`,
-      cabin:        i === 2 ? 'Business' : 'Economy',
-      priceMYR:     price,
-      seatsLeft:    [9, 4, 2][i] ?? 5,
-      recommended:  i === 0,
-      note:         i === 0 ? 'Earliest available — recommended' : i === 1 ? 'Good value' : 'Premium option',
-    };
-  });
-}
 
 export async function searchHotels(airportRaw: string): Promise<HotelOffer[]> {
   await new Promise((r) => setTimeout(r, 200));

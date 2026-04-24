@@ -26,17 +26,25 @@ export const BookingPage = ({ setView, globalLang }: { setView: (view: any, id?:
 
   // Firebase 实时监听
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
+    // Listen for Auth changes first to ensure we have the user
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+      if (user) {
+        const q = query(collection(db, "Booking"), where("userId", "==", user.uid));
+        
+        const unsubscribeDb = onSnapshot(q, (snapshot) => {
+          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setBookings(items);
+        }, (error) => {
+          console.error("Firestore error: ", error);
+        });
 
-    const q = query(collection(db, "Booking"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setBookings(items);
-    }, (error) => {
-      console.error("Firestore error: ", error);
+        return () => unsubscribeDb();
+      } else {
+        setBookings([]); // Clear bookings if logged out
+      }
     });
-    return () => unsubscribe();
+
+    return () => unsubscribeAuth();
   }, []);
 
   const filterBy = (type: string) => {
