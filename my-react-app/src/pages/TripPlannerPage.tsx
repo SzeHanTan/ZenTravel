@@ -292,7 +292,7 @@ export const TripPlannerPage = ({ setView }: { setView: (v: string) => void }) =
 
     try {
       const [flights, hotels, destInfo] = await Promise.all([
-        searchFlights(origin, effectiveDest),
+        searchFlights(origin, effectiveDest, 'Economy'),
         searchHotels(effectiveDest),
         getDestinationInfo(effectiveDest),
       ]);

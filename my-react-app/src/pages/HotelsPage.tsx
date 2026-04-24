@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Calendar, User, ArrowLeft, X, Plus, Minus, Loader2 } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { db, auth } from '../services/firebase'; 
@@ -7,15 +7,22 @@ import { HotelResultsPage } from './HotelResultsPage';
 import { searchHotels, toIATA } from '../services/mockTravelAPI'; 
 import "../styles/HotelsPage.css";
 
-export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
+// 🚀 Updated Interface to receive AI handoff data
+interface HotelProps {
+  setView: (v: string) => void;
+  pendingSearch?: { origin: string; destination: string } | null;
+  clearSearch?: () => void;
+}
+
+export const HotelsPage: React.FC<HotelProps> = ({ setView, pendingSearch, clearSearch }) => {
   const [viewMode, setViewMode] = useState<'search' | 'results'>('search');
   const [loading, setLoading] = useState(false);
   const [hotels, setHotels] = useState<any[]>([]);
 
   // --- Search Form States ---
   const [destination, setDestination] = useState("");
-  const [startDate, setStartDate] = useState("2026-04-23");
-  const [endDate, setEndDate] = useState("2026-04-24");
+  const [startDate, setStartDate] = useState("2026-04-25");
+  const [endDate, setEndDate] = useState("2026-04-26");
   const [rooms, setRooms] = useState(1);
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
@@ -28,16 +35,53 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
     return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   };
 
-  // --- 🛠️ Logic Amendment: Using Mock Data instead of AI ---
+  // 🤖 AI INTELLIGENT AUTO-SEARCH LOGIC
+  useEffect(() => {
+    if (pendingSearch) {
+      const runAutoSearch = async () => {
+        // AI usually extracts the target city as 'destination'
+        const targetCity = pendingSearch.destination || pendingSearch.origin;
+        setDestination(targetCity);
+        
+        setLoading(true);
+        try {
+          // 1. Retrieve data from Mock API automatically
+          const mockResults = await searchHotels(targetCity);
+
+          // 2. Transform Mock Data
+          const formattedResults = mockResults.map(h => ({
+            name: h.name,
+            location: h.distance,
+            price: `MYR ${h.priceMYR}`,
+            rating: h.stars.toFixed(1),
+            description: `Verified stay near ${toIATA(targetCity)} hub. ${h.amenity}`,
+            amenities: [h.amenity, "High-speed WiFi", "24/7 Concierge"],
+            image_keyword: h.recommended ? "luxury-hotel" : "modern-hotel",
+            isRecommended: h.recommended
+          }));
+
+          setHotels(formattedResults);
+          setViewMode('results'); // 3. Redirect to results immediately
+          
+          // 4. Clear the handoff data
+          if (clearSearch) clearSearch();
+        } catch (err) {
+          console.error("Hotel AI Search Error:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      runAutoSearch();
+    }
+  }, [pendingSearch]);
+
   const handleSearch = async () => {
     if (!destination) return alert("Please enter a destination!");
     setLoading(true);
     
     try {
-      // 1. Retrieve data from Mock API
       const mockResults = await searchHotels(destination);
-
-      // 2. Transform Mock Data to fit your UI format
       const formattedResults = mockResults.map(h => ({
         name: h.name,
         location: h.distance,
@@ -46,7 +90,7 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
         description: `Verified stay near ${toIATA(destination)} airport. ${h.amenity}`,
         amenities: [h.amenity, "High-speed WiFi", "24/7 Concierge"],
         image_keyword: h.recommended ? "luxury-hotel" : "modern-hotel",
-        isRecommended: h.recommended // Used for the Sparkles badge
+        isRecommended: h.recommended
       }));
 
       setHotels(formattedResults);
@@ -59,7 +103,7 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
   };
 
   const handleBooking = async (hotel: any) => {
-    const user = auth.currentUser; // Get the current logged-in user
+    const user = auth.currentUser;
     if (!user) return alert("Please log in to book!");
 
     try {
@@ -76,7 +120,7 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
         price: hotel.price,
         status: "upcoming",
         type: "hotel",
-        userId: user.uid // 🚀 CHANGED: Use real UID, not hardcoded string
+        userId: user.uid 
       };
       await addDoc(collection(db, "Booking"), bookingData);
       alert(`Success! Booked ${hotel.name}.`);
@@ -136,7 +180,6 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
         </div>
       </main>
 
-      {/* --- MODALS (Restored Designs) --- */}
       {showDateModal && (
         <div className="modal-overlay" onClick={() => setShowDateModal(false)}>
           <div className="modal-card guest-modal" onClick={e => e.stopPropagation()}>
@@ -165,9 +208,9 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
               <div key={i} className="counter-row">
                 <span>{item.label}</span>
                 <div className="counter-controls">
-                  <Minus onClick={() => item.set(Math.max(item.min, item.val - 1))} />
+                  <Minus size={16} onClick={() => item.set(Math.max(item.min, item.val - 1))} />
                   <span>{item.val}</span>
-                  <Plus onClick={() => item.set(item.val + 1)} />
+                  <Plus size={16} onClick={() => item.set(item.val + 1)} />
                 </div>
               </div>
             ))}
