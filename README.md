@@ -27,7 +27,7 @@
 
 ### 1. Clone Repository
 ```bash
-git clone [https://github.com/YourUsername/ZenTravel.git](https://github.com/YourUsername/ZenTravel.git)
+git clone [https://github.com/WYlim1003/ZenTravel.git]
 cd zentravel/my-react-app
 
 ### 2. Install Dependencies
@@ -45,6 +45,8 @@ VITE_EMAILJS_PUBLIC_KEY=your_public_key
 ### 4. Run application
 ```bash
 npm run dev
+
+---
 
 ## 🛠️ Technology Stack
 
