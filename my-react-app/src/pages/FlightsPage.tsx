@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, Users, PlaneTakeoff, PlaneLanding, ArrowUpDown, X, Plus, Minus, PlusCircle, Check } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
-import { BottomNav } from '../components/BottomNav';
 import "../styles/FlightsPage.css";
 
 const recommendations = [
@@ -231,7 +230,6 @@ export const FlightsPage: React.FC<{ setView: (v: string) => void }> = ({ setVie
         </div>
       )}
 
-      <BottomNav setView={setView} currentView="home" />
     </div>
   );
 };

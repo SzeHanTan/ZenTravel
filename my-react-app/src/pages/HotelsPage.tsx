@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
-import { Search, Calendar, User, ArrowLeft, X, Plus, Minus, Loader2 } from 'lucide-react';
-import { BottomNav } from '../components/BottomNav';
-import { runHotelSearchWorkflow } from '../agents/workflowEngine';
-import { db } from '../services/firebase'; 
-import { collection, addDoc } from 'firebase/firestore';
-import { HotelResultsPage } from './HotelResultsPage';
+import { Search, Calendar, User, ArrowLeft, X, Plus, Minus, Loader2, Star, MapPin } from 'lucide-react';
+import { getHotels } from '../services/hotelService';
 import "../styles/HotelsPage.css";
 
 // --- Main Component ---
@@ -200,7 +196,62 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
         )}
       </main>
 
-      <BottomNav setView={setView} currentView="home" />
+      {/* --- MODAL: Date Selector --- */}
+      {showDateModal && (
+        <div className="modal-overlay" onClick={() => setShowDateModal(false)}>
+          <div className="modal-card guest-modal" onClick={e => e.stopPropagation()}>
+            <X className="close-icon" onClick={() => setShowDateModal(false)} />
+            <h3>Select Dates</h3>
+            <div className="date-input-group">
+              <label>Check-in</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <label>Check-out</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+            <button className="modal-action-btn" onClick={() => setShowDateModal(false)}>Confirm</button>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL: Guest Selector --- */}
+      {showGuestModal && (
+        <div className="modal-overlay" onClick={() => setShowGuestModal(false)}>
+          <div className="modal-card guest-modal" onClick={e => e.stopPropagation()}>
+            <X className="close-icon" onClick={() => setShowGuestModal(false)} />
+            <h3>Occupancy</h3>
+            
+            <div className="counter-row">
+              <span>Rooms</span>
+              <div className="counter-controls">
+                <Minus onClick={() => setRooms(Math.max(1, rooms - 1))} />
+                <span>{rooms}</span>
+                <Plus onClick={() => setRooms(rooms + 1)} />
+              </div>
+            </div>
+
+            <div className="counter-row">
+              <span>Adults</span>
+              <div className="counter-controls">
+                <Minus onClick={() => setAdults(Math.max(1, adults - 1))} />
+                <span>{adults}</span>
+                <Plus onClick={() => setAdults(adults + 1)} />
+              </div>
+            </div>
+
+            <div className="counter-row">
+              <span>Children</span>
+              <div className="counter-controls">
+                <Minus onClick={() => setChildren(Math.max(0, children - 1))} />
+                <span>{children}</span>
+                <Plus onClick={() => setChildren(children + 1)} />
+              </div>
+            </div>
+
+            <button className="modal-action-btn" onClick={() => setShowGuestModal(false)}>Apply</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

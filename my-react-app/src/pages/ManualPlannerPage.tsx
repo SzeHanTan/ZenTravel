@@ -4,7 +4,6 @@ import {
   Clock, Utensils, Building2, Plane, Camera,
   Sparkles, Download, X, ChevronDown,
 } from 'lucide-react';
-import { BottomNav } from '../components/BottomNav';
 import { getDestinationInfo } from '../services/mockDestinationAPI';
 import jsPDF from 'jspdf';
 import '../styles/TripPlannerPage.css';
@@ -357,7 +356,6 @@ export const ManualPlannerPage: React.FC<{ setView: (v: string) => void }> = ({ 
         </button>
       </div>
 
-      <BottomNav setView={setView} currentView="home" />
     </div>
   );
 };
