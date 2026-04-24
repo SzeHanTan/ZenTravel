@@ -1,0 +1,1 @@
+var e=`/assets/MASCOT-removebg-preview-DPDYz-ul.png`;export{e as t};

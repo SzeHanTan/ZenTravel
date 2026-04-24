@@ -27,18 +27,16 @@ interface HomeProps {
   setPendingSearch: (data: { origin: string, destination: string } | null) => void;
 }
 
-// 🤖 1. Advanced NLP: Extracts locations from "City to City" OR "Hotels in City"
+// 🤖 NLP Helper: Extracts locations from input
 const extractLocationIntelligence = (term: string) => {
-  const lowerTerm = term.toLowerCase();
-  
-  // Pattern A: "KL to London" (Route Extraction)
+  // Pattern A: "KL to London"
   const routePattern = /(?:from\s+)?([\w\s]+)\s+to\s+([\w\s]+)/i;
   const routeMatch = term.match(routePattern);
   if (routeMatch) {
     return { origin: routeMatch[1].trim(), destination: routeMatch[2].trim() };
   }
 
-  // Pattern B: "Hotels in London" (Single Location Extraction)
+  // Pattern B: "Hotels in London"
   const locationPattern = /(?:in|at|near)\s+([\w\s]+)/i;
   const locationMatch = term.match(locationPattern);
   if (locationMatch) {
@@ -58,6 +56,7 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency, setPend
   const currencySymbol = globalCurrency.code.split(' | ')[0];
   const currencyCode = globalCurrency.code.split(' | ')[1];
 
+  // Fetch Exchange Rates
   useEffect(() => {
     fetch(`https://open.er-api.com/v6/latest/MYR`)
       .then(res => res.json())
@@ -73,18 +72,25 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency, setPend
   const recommendation = {
     title: "AI RECOMMENDATION",
     message: `Your flight to Tokyo (ZT-402) is confirmed! We recommend booking a hotel in Shinjuku and getting travel insurance starting at ${currencySymbol} ${convertedInsurancePrice}.`,
-    isEmergency: false
   };
 
+  // Fetch Search History
   const fetchHistory = async () => {
     const user = auth.currentUser;
     if (!user) return;
     try {
-      const q = query(collection(db, "search_history"), where("userId", "==", user.uid), orderBy("timestamp", "desc"), limit(3));
+      const q = query(
+        collection(db, "search_history"), 
+        where("userId", "==", user.uid), 
+        orderBy("timestamp", "desc"), 
+        limit(3)
+      );
       const querySnapshot = await getDocs(q);
       const docs = querySnapshot.docs.map(doc => doc.data().term);
       setHistory([...new Set(docs)]);
-    } catch (error) { console.error("History fetch error:", error); }
+    } catch (error) { 
+      console.error("History fetch error:", error); 
+    }
   };
 
   useEffect(() => {
@@ -92,18 +98,17 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency, setPend
     return () => unsubscribe();
   }, []);
 
-  // 🤖 2. Intent Detection
+  // Detect which category the user is looking for
   const detectIntent = (term: string) => {
     const lower = term.toLowerCase();
-    if (lower.includes("hotel") || lower.includes("stay") || lower.includes("room") || lower.includes("inn")) return 'hotels';
-    if (lower.includes("flight") || lower.includes("ticket") || lower.includes("fly") || lower.includes("plane")) return 'flights';
-    if (lower.includes("car") || lower.includes("rent") || lower.includes("drive")) return 'carrental';
+    if (lower.includes("hotel") || lower.includes("stay") || lower.includes("room")) return 'hotels';
+    if (lower.includes("flight") || lower.includes("ticket") || lower.includes("fly")) return 'flights';
+    if (lower.includes("car") || lower.includes("rent")) return 'carrental';
     if (lower.includes("insurance") || lower.includes("protect")) return 'insurance';
     if (lower.includes("plan") || lower.includes("itinerary")) return 'tripplanner';
     return null;
   };
 
-  // 🛠️ 3. Main Search Logic (Direct Execution)
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const term = searchTerm.trim();
@@ -119,18 +124,15 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency, setPend
       });
 
       const intent = detectIntent(term);
-      const data = extractLocationIntelligence(term);
+      const locationData = extractLocationIntelligence(term);
 
       if (intent) {
-        // Prepare the data for the target page (Hotels or Flights)
-        if (data) {
-          setPendingSearch(data); 
-        }
+        if (locationData) setPendingSearch(locationData);
 
         setTimeout(() => {
           setIsAiProcessing(false);
           setSearchTerm("");
-          setView(intent); // 🚀 Automatic Redirect
+          setView(intent); 
         }, 800);
       } else {
         setIsAiProcessing(false);
@@ -153,18 +155,22 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency, setPend
             <span className="cat-label">HOTELS</span>
             <div className="cat-img-wrapper"><img src={hotelsImg} alt="Hotels" className="cat-img-fit" /></div>
           </div>
+
           <div className="cat-box orange" onClick={() => setView('flights')}>
             <span className="cat-label">FLIGHTS</span>
             <div className="cat-img-wrapper"><img src={flightsImg} alt="Flights" className="cat-img-fit" /></div>
           </div>
+
           <div className="cat-box yellow" onClick={() => setView('insurance')}>
             <span className="cat-label">INSURANCE</span>
             <div className="cat-img-wrapper"><img src={insuranceImg} alt="Insurance" className="cat-img-fit" /></div>
           </div>
+
           <div className="cat-box green" onClick={() => setView('tripplanner')}>
             <span className="cat-label">TRIP PLANNER</span>
             <div className="cat-img-wrapper"><img src={tripPlannerImg} alt="Trip Planner" className="cat-img-fit" /></div>
           </div>
+
           <div className="cat-box blue" onClick={() => setView('carrental')}>
             <span className="cat-label">CAR RENTAL</span>
             <div className="cat-img-wrapper"><img src={carRentalImg} alt="Car Rental" className="cat-img-fit" /></div>

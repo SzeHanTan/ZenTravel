@@ -15,8 +15,18 @@
 │   Workflow Stage Progress Bar  ←  Live animated stepper (1→2→3→4→5)    │
 │   Agent Activity Panel         ←  Per-agent running/completed/failed    │
 │   WorkflowResponseCard         ←  Recovery plan with approve buttons    │
+│                                                                         │
+│   📎 IMAGE / DOCUMENT UPLOAD  (boarding pass, SMS screenshot, etc.)     │
+│      └─► GLM Vision extracts travel info → feeds into Workflow Engine   │
 └───────────────────────────┬─────────────────────────────────────────────┘
-                            │  rawInput (unstructured natural language)
+                            │  rawInput (text OR extracted from image)
+                            │
+              ┌─────────────▼──────────────┐
+              │  visionService.ts          │
+              │  GLM Vision (multimodal)   │
+              │  Image → ExtractedText     │
+              └─────────────┬──────────────┘
+                            │  (if image uploaded)
                             ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │              5-STAGE STATEFUL WORKFLOW ENGINE  (workflowEngine.ts)      │
@@ -108,7 +118,8 @@ src/
 ├── services/
 │   ├── glmClient.ts          # ILMU-GLM-5.1 API client (timeout + retry logic)
 │   ├── mockTravelAPI.ts      # Mock Amadeus: flights, hotels, compensation
-│   └── geminiService.ts      # Gemini image recognition (trip planner feature)
+│   ├── visionService.ts      # GLM Vision: extract travel info from uploaded images
+│   └── emailService.ts       # EmailJS: real email delivery for recovery plans
 │
 ├── components/
 │   ├── WorkflowResponseCard.tsx  # Recovery plan UI with stage bar + approval cards
@@ -144,7 +155,7 @@ npm run dev
 
 Navigate to the **AI Control** page (ZenTravel → Trip Planner → AI Control), select **Brain Master**, and describe any flight disruption.
 
-### Example inputs
+### Example inputs (text)
 
 ```
 My flight MH792 from Kuala Lumpur to Frankfurt was cancelled. Need rebooking and compensation.
@@ -155,6 +166,19 @@ Flight D7521 to Tokyo delayed 5 hours, I need a hotel near KLIA tonight.
 ```
 I landed in Bali but my bag didn't arrive. Flight was AK388 from KUL.
 ```
+
+### Image / document upload (NEW)
+
+Click the **📎** button next to the input box (Brain Master agent only) and upload any of the following:
+
+| Document type              | What GLM extracts                                |
+|----------------------------|--------------------------------------------------|
+| Boarding pass screenshot   | Flight number, route, departure time             |
+| Delay / cancellation SMS   | Disruption type, flight number, airline          |
+| Booking confirmation email | Origin, destination, PNR, travel dates           |
+| Airline app notification   | New departure time, gate changes, status updates |
+
+GLM Vision reads the image and produces a text summary that is fed directly into the 5-stage Brain Master workflow — demonstrating end-to-end **unstructured input → structured recovery plan**.
 
 ---
 
