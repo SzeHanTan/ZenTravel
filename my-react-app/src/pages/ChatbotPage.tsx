@@ -4,6 +4,7 @@ import '../styles/ChatbotPage.css';
 import '../styles/AgentResponseCard.css';
 import { runZenTravelWorkflow } from '../agents/workflowEngine';
 import { runSpecializedAgent } from '../agents/specializedAgents';
+import { extractTravelInfoFromFile, fileToBase64 } from '../services/visionService';
 import type { AgentType, SpecializedAgentOutput } from '../agents/specializedAgents';
 import type { StructuredWorkflowOutput, WorkflowAction } from '../agents/types';
 import { AgentResponseCard } from '../components/AgentResponseCard';
@@ -25,6 +26,8 @@ interface Message {
   id: number;
   text: string;
   sender: 'user' | 'ai';
+  imageUrl?: string;           // base64 preview for uploaded images
+  isExtracting?: boolean;      // true while vision is processing
   specializedOutput?: SpecializedAgentOutput;
   workflowOutput?: StructuredWorkflowOutput;
 }
@@ -132,10 +135,15 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
   const [activeAgent, setActiveAgent] = useState<ActiveAgent>('master');
   const [agentPanel, setAgentPanel] = useState<Record<string, AgentPanelEntry>>({ ...DEFAULT_PANEL });
   const [liveStage, setLiveStage] = useState(0);
-  const panelTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const stageTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const chatEndRef    = useRef<HTMLDivElement>(null);
-  const lastAiMsgRef  = useRef<HTMLDivElement>(null);
+  const panelTimers  = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const stageTimers  = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const chatEndRef   = useRef<HTMLDivElement>(null);
+  const lastAiMsgRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Accumulated context for multi-turn clarification.
+  // When the workflow pauses to ask a question, we store the original input here
+  // so that follow-up replies are combined with it instead of being sent alone.
+  const conversationContextRef = useRef<string>('');
   let msgId = useRef(0);
 
   const clearPanelTimers = () => {
@@ -246,6 +254,128 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
     resetPanel();
     clearStageTimers();
     setLiveStage(0);
+    conversationContextRef.current = '';
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (isProcessing) return;
+
+    // Show the image immediately in the chat
+    const previewUrl = await fileToBase64(file);
+    const userImgMsg: Message = {
+      id: ++msgId.current,
+      text: `📎 ${file.name}`,
+      sender: 'user',
+      imageUrl: previewUrl,
+    };
+    setMessages((prev) => [...prev, userImgMsg]);
+    setIsProcessing(true);
+    runPanelSimulation();
+    runStageSimulation();
+
+    // AI "extracting" placeholder — message changes based on file type
+    const isImage = file.type.startsWith('image/');
+    const extractMsgId = ++msgId.current;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: extractMsgId,
+        text: isImage
+          ? '🔍 Running OCR on your image to extract text, then sending to GLM…'
+          : '🔍 Extracting text from your document and sending to GLM…',
+        sender: 'ai',
+        isExtracting: true,
+      },
+    ]);
+
+    try {
+      // Stage 0: Document Intelligence — extract text then GLM interprets it
+      const doc = await extractTravelInfoFromFile(file);
+
+      // Unsupported file type
+      if (!doc.extractedText && doc.fileType === 'unsupported') {
+        clearStageTimers();
+        setLiveStage(0);
+        resetPanel();
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === extractMsgId
+              ? {
+                  ...m,
+                  isExtracting: false,
+                  text: `⚠️ Unsupported file type. Please upload a PDF, .txt, or .eml file — or just type your disruption details.`,
+                }
+              : m,
+          ),
+        );
+        setIsProcessing(false);
+        return;
+      }
+
+      // No text could be extracted (scanned PDF, decorative image, etc.)
+      if (!doc.extractedText) {
+        clearStageTimers();
+        setLiveStage(0);
+        resetPanel();
+        const hint =
+          doc.fileType === 'image'
+            ? `⚠️ OCR could not find readable text in ${file.name} (the image may be too blurry or decorative). Please type the disruption details and I'll handle the rest.`
+            : `⚠️ Could not extract text from ${file.name} (the PDF may be a scanned image with no selectable text). Please type the disruption details and I'll handle the rest.`;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === extractMsgId
+              ? { ...m, isExtracting: false, text: hint }
+              : m,
+          ),
+        );
+        setIsProcessing(false);
+        return;
+      }
+
+      // Success — show what GLM understood from the document
+      const typeLabel =
+        doc.fileType === 'pdf'   ? 'PDF' :
+        doc.fileType === 'image' ? 'image (via OCR)' : 'document';
+      const prefix = `📄 Text extracted from ${file.name} (${typeLabel}) — sending to GLM for analysis:\n`;
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === extractMsgId
+            ? { ...m, isExtracting: false, text: prefix + doc.extractedText }
+            : m,
+        ),
+      );
+
+      // Stages 1–5: Feed extracted text into the Brain Master workflow
+      // Store a truncated version as context — GLM only needs the key facts,
+      // not the full OCR dump (headers, phone numbers, "Report Junk", etc.)
+      conversationContextRef.current = doc.extractedText.slice(0, 600);
+      const result = await runZenTravelWorkflow(doc.extractedText);
+      clearStageTimers();
+      if (result.stage === 'paused') {
+        setLiveStage(2);
+        // Keep context so the next user reply is combined with the original extraction
+      } else {
+        setLiveStage(6);
+        conversationContextRef.current = ''; // completed — reset context
+      }
+      finalisePanelFromResult(result);
+      setMessages((prev) => [
+        ...prev,
+        { id: ++msgId.current, text: '', sender: 'ai', workflowOutput: result },
+      ]);
+    } catch (err) {
+      clearStageTimers();
+      setLiveStage(0);
+      resetPanel();
+      const errorText = err instanceof Error ? err.message : 'Unknown error';
+      setMessages((prev) => [
+        ...prev,
+        { id: ++msgId.current, text: `Something went wrong: ${errorText}`, sender: 'ai' },
+      ]);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSend = async () => {
@@ -263,10 +393,29 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
 
     try {
       if (activeAgent === 'master') {
-        const result = await runZenTravelWorkflow(payload);
+        // If we have accumulated context from a previous paused workflow
+        // (e.g. the user answered a clarifying question), combine them so GLM
+        // has the full picture and doesn't start from scratch.
+        // Truncate stored context to 600 chars to avoid bloating the prompt
+        // with raw OCR noise — GLM only needs the key disruption facts.
+        const ctx = conversationContextRef.current;
+        const ctxSnippet = ctx ? ctx.slice(0, 600) : '';
+        const fullInput = ctxSnippet
+          ? `${ctxSnippet}\nUser clarification: ${payload}`
+          : payload;
+
+        const result = await runZenTravelWorkflow(fullInput);
         clearStageTimers();
-        // Set to 6 (beyond last stage) so all completed stages show ✓ not the pulsing ring
-        setLiveStage(result.stage === 'paused' ? 2 : 6);
+
+        if (result.stage === 'paused') {
+          setLiveStage(2);
+          // Update stored context with the combined input (capped to avoid bloat)
+          conversationContextRef.current = fullInput.slice(0, 800);
+        } else {
+          setLiveStage(6);
+          conversationContextRef.current = ''; // workflow complete — reset
+        }
+
         finalisePanelFromResult(result);
         const aiMsg: Message = {
           id: ++msgId.current,
@@ -276,6 +425,7 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
         };
         setMessages((prev) => [...prev, aiMsg]);
       } else {
+        conversationContextRef.current = ''; // specialist agents are stateless
         const result = await runSpecializedAgent(activeAgent, payload);
         const aiMsg: Message = {
           id: ++msgId.current,
@@ -451,7 +601,7 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
             {messages.length > 0 && (
               <button
                 className="cb-clear-btn"
-                onClick={() => { setMessages([]); resetPanel(); clearStageTimers(); setLiveStage(0); }}
+                onClick={() => { setMessages([]); resetPanel(); clearStageTimers(); setLiveStage(0); conversationContextRef.current = ''; }}
                 disabled={isProcessing}
               >
                 Clear
@@ -468,7 +618,7 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
                 <p className="cb-empty-heading">How can I help?</p>
                 <p className="cb-empty-sub">
                   {activeAgent === 'master'
-                    ? 'Describe any travel disruption and I will handle the full recovery workflow.'
+                    ? 'Describe a disruption — or upload a PDF, image, or .txt. Text is extracted and GLM reasons on it.'
                     : `Ask your ${activeAgent} question and I will act as your dedicated ${activeAgent} specialist.`}
                 </p>
                 <div className="cb-prompts">
@@ -484,6 +634,36 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
                     </button>
                   ))}
                 </div>
+
+                {/* Sample test files — master agent only */}
+                {activeAgent === 'master' && (
+                  <div className="cb-sample-docs">
+                    <p className="cb-sample-docs-heading">📂 Sample test documents</p>
+                    <p className="cb-sample-docs-sub">Download a file and upload it with the 📎 button to demo unstructured input handling</p>
+                    <div className="cb-sample-docs-grid">
+                      {[
+                        { label: 'SMS — Flight Delay',      file: 'test_sms_delay_MH792.png',           type: 'image', tag: 'MH792 KUL→FRA' },
+                        { label: 'Email — Cancellation',    file: 'test_email_cancellation_AK388.png',   type: 'image', tag: 'AK388 KUL→Bali' },
+                        { label: 'Letter — Delay Notice',   file: 'test_pdf_delay_letter_MH792.png',     type: 'image', tag: 'MH792 4h delay' },
+                        { label: 'SMS — Lost Luggage',      file: 'test_sms_lost_luggage_QR521.png',     type: 'image', tag: 'QR521 DOH→KUL' },
+                        { label: 'TXT — Delay Notice',      file: 'flight_delay_MH792.txt',              type: 'text',  tag: 'MH792 · text file' },
+                        { label: 'TXT — Cancellation',      file: 'flight_cancellation_AK388.txt',       type: 'text',  tag: 'AK388 · text file' },
+                        { label: 'TXT — Lost Luggage PIR',  file: 'lost_luggage_QR521.txt',              type: 'text',  tag: 'QR521 · text file' },
+                      ].map(({ label, file, type, tag }) => (
+                        <a
+                          key={file}
+                          className={`cb-sample-doc cb-sample-doc--${type}`}
+                          href={`/test-docs/${file}`}
+                          download={file}
+                        >
+                          <span className="cb-sample-doc-icon">{type === 'image' ? '🖼️' : '📄'}</span>
+                          <span className="cb-sample-doc-label">{label}</span>
+                          <span className="cb-sample-doc-tag">{tag}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="messages-container">
@@ -498,13 +678,20 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
                       ref={isLastAI ? lastAiMsgRef : undefined}
                       className={`message ${msg.sender}`}
                     >
+                      {msg.imageUrl && (
+                        <div className="cb-img-preview-wrap">
+                          <img src={msg.imageUrl} className="cb-img-preview" alt="Uploaded document" />
+                        </div>
+                      )}
                       {msg.specializedOutput ? (
                         <AgentResponseCard output={msg.specializedOutput} />
                       ) : msg.workflowOutput ? (
                         <WorkflowResponseCard output={msg.workflowOutput} />
-                      ) : (
-                        <span style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</span>
-                      )}
+                      ) : msg.text ? (
+                        <span style={{ whiteSpace: 'pre-wrap' }} className={msg.isExtracting ? 'cb-extracting' : ''}>
+                          {msg.text}
+                        </span>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -521,6 +708,31 @@ export const ChatbotPage: React.FC<ChatbotPageProps> = ({ setView }) => {
           </div>
 
           <div className="cb-input-bar">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.txt,.eml,.csv,image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleImageUpload(file);
+                e.target.value = '';
+              }}
+            />
+
+            {/* Upload button — master agent only */}
+            {activeAgent === 'master' && (
+              <button
+                className="cb-upload-btn"
+                title="Upload a PDF, image, or .txt — text is extracted then GLM reasons on it"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isProcessing}
+              >
+                📎
+              </button>
+            )}
+
             <input
               type="text"
               className="cb-input"

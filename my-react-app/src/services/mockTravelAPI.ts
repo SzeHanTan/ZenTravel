@@ -7,14 +7,17 @@
 export interface FlightOffer {
   flightNumber: string;
   airline:      string;
-  from:          string;
-  to:            string;
-  departIn:      string;
-  cabin:         string;
-  priceMYR:      number;
-  seatsLeft:     number;
+  from:         string;
+  to:           string;
+  departIn:     string;
+  seatsLeft:    number;
+  timeDepart:   string;
+  timeLanding:  string;
+  duration:     string;
+  cabin:        string;
+  priceMYR:     number;
   recommended?: boolean;
-  note?:         string;
+  note?:        string;
 }
 
 export interface HotelOffer {
@@ -137,28 +140,52 @@ const calculateArrival = (departTime: string, durationMins: number) => {
   return `${String(arrivalH).padStart(2, '0')}:${String(arrivalM).padStart(2, '0')}${nextDay}`;
 };
 
-export async function searchFlights(fromRaw: string, toRaw: string, excludeName?: string) {
+// --- Updated Integrated Search Function ---
+export async function searchFlights(
+  fromRaw:       string,
+  toRaw:         string,
+  countOrClass:  string | number = 3,
+  excludeName?:  string
+): Promise<FlightOffer[]> {
   await new Promise((r) => setTimeout(r, 400));
+
   const from = toIATA(fromRaw);
-  const to = toIATA(toRaw);
+  const to   = toIATA(toRaw);
   const routeKey = `${from}-${to}`;
-  const route = ROUTES[routeKey] ?? DEFAULT_ROUTE;
-  
-  const results = route.airlines.map((al, i) => {
-    const depart = ["07:30", "11:15", "15:45", "22:10"][i] || "09:00";
+  const route    = ROUTES[routeKey] ?? DEFAULT_ROUTE;
+
+  const cabin = typeof countOrClass === 'string' ? countOrClass : 'Economy';
+  const count = typeof countOrClass === 'number'  ? countOrClass : 3;
+
+  const startTimes  = ['07:30', '11:15', '15:45', '22:10'];
+  const durationStr = `${Math.floor(route.durationMins / 60)}h ${route.durationMins % 60}m`;
+  const seats       = [9, 4, 2, 6];
+
+  let results = route.airlines.slice(0, Math.max(count, 1)).map((al, i) => {
+    const depart   = startTimes[i] ?? '09:00';
+    const departIn = `+${Math.round((i + 1) * 2.5)}h`;
     return {
-      airline: al.name,
+      airline:      al.name,
       flightNumber: `${al.code}${100 + i * 23}`,
-      from, to, timeDepart: depart,
+      from,
+      to,
+      departIn,
+      seatsLeft:   seats[i] ?? 5,
+      timeDepart:  depart,
       timeLanding: calculateArrival(depart, route.durationMins),
-      duration: `${Math.floor(route.durationMins/60)}h ${route.durationMins%60}m`,
-      priceMYR: Math.round(route.basePriceMYR * (1 + i * 0.15)),
-      cabin: 'Economy',
-      recommended: i === 0
+      duration:    durationStr,
+      cabin,
+      priceMYR:    Math.round(route.basePriceMYR * (1 + i * 0.15)),
+      recommended: i === 0,
+      note:        i === 0 ? 'Earliest available — recommended' : i === 1 ? 'Good value' : 'Premium option',
     };
   });
 
-  return excludeName ? results.filter(f => f.airline !== excludeName) : results;
+  if (excludeName) {
+    results = results.filter(f => f.airline !== excludeName);
+  }
+
+  return results;
 }
 
 // ─── Databases ───────────────────────────────────────────────────────────────
@@ -214,16 +241,36 @@ export async function checkCompensation(disruptionType: string): Promise<Compens
 }
 
 export async function executeTool(call: ToolCallPlan): Promise<ToolResult> {
+  const p = call.params ?? {};
   switch (call.tool) {
     case 'search_flights':
-      return { tool: 'search_flights', result: await searchFlights(String(call.params.from ?? ''), String(call.params.to ?? '')) };
+      return {
+        tool:   'search_flights',
+        result: await searchFlights(
+          String(p.from ?? p.origin ?? ''),
+          String(p.to   ?? p.destination ?? ''),
+          Number(p.count ?? 3),
+        ),
+      };
     case 'search_hotels':
-      return { tool: 'search_hotels', result: await searchHotels(String(call.params.airport ?? '')) };
-    case 'search_transport':
-      return { tool: 'search_transport', result: await searchTransport(String(call.params.location ?? '')) };
+      return {
+        tool:   'search_hotels',
+        result: await searchHotels(String(p.airport ?? p.from ?? p.origin ?? '')),
+      };
+    case 'search_transport': // 你的新逻辑
+      return {
+        tool:   'search_transport',
+        result: await searchTransport(String(p.location ?? '')),
+      };
     case 'check_compensation':
-      return { tool: 'check_compensation', result: await checkCompensation('cancellation') };
+      return {
+        tool:   'check_compensation',
+        result: await checkCompensation(String(p.type ?? p.disruption_type ?? 'unknown')),
+      };
     default:
-      throw new Error(`Unknown tool: ${call.tool}`);
+      return {
+        tool:   'check_compensation' as const,
+        result: await checkCompensation('unknown'),
+      };
   }
 }
