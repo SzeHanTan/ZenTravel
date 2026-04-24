@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Search, Calendar, User, ArrowLeft, X, Plus, Minus, Loader2, Star, MapPin } from 'lucide-react';
-import { getHotels } from '../services/hotelService';
+import { Search, Calendar, User, ArrowLeft, X, Plus, Minus, Loader2 } from 'lucide-react';
+import { BottomNav } from '../components/BottomNav';
+import { db, auth } from '../services/firebase'; 
+import { collection, addDoc } from 'firebase/firestore';
+import { HotelResultsPage } from './HotelResultsPage';
+import { searchHotels, toIATA } from '../services/mockTravelAPI'; 
 import "../styles/HotelsPage.css";
 
-// --- Main Component ---
 export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
   const [viewMode, setViewMode] = useState<'search' | 'results'>('search');
   const [loading, setLoading] = useState(false);
@@ -17,7 +20,6 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
 
-  // --- Modal Toggles ---
   const [showDateModal, setShowDateModal] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
 
@@ -26,41 +28,40 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
     return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   };
 
+  // --- 🛠️ Logic Amendment: Using Mock Data instead of AI ---
   const handleSearch = async () => {
     if (!destination) return alert("Please enter a destination!");
     setLoading(true);
+    
     try {
-      const result = await runHotelSearchWorkflow(destination, startDate, endDate, adults + children);
-      const hAction = result.plan?.actions.find(a => a.agent === 'hotel');
+      // 1. Retrieve data from Mock API
+      const mockResults = await searchHotels(destination);
 
-      if (hAction?.status === 'completed' && hAction.output) {
-        setHotels(JSON.parse(hAction.output));
-        setViewMode('results');
-      } else {
-        throw new Error("Timeout or empty output");
-      }
-    } catch (err) {
-      console.warn("AI Timeout or Error - Loading Demo Stays instead.");
-      // 🚀 EMERGENCY FALLBACK DATA
-      const demoHotels = [
-        {
-          name: `${destination} Grand Resort`,
-          location: "City Center",
-          price: "$250",
-          rating: "4.8",
-          description: "A beautiful placeholder stay used while the AI Agent is warming up.",
-          amenities: ["WiFi", "Pool", "Spa"],
-          image_keyword: "resort"
-        }
-      ];
-      setHotels(demoHotels);
+      // 2. Transform Mock Data to fit your UI format
+      const formattedResults = mockResults.map(h => ({
+        name: h.name,
+        location: h.distance,
+        price: `MYR ${h.priceMYR}`,
+        rating: h.stars.toFixed(1),
+        description: `Verified stay near ${toIATA(destination)} airport. ${h.amenity}`,
+        amenities: [h.amenity, "High-speed WiFi", "24/7 Concierge"],
+        image_keyword: h.recommended ? "luxury-hotel" : "modern-hotel",
+        isRecommended: h.recommended // Used for the Sparkles badge
+      }));
+
+      setHotels(formattedResults);
       setViewMode('results');
+    } catch (err) {
+      alert("Error retrieving mock hotel data.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleBooking = async (hotel: any) => {
+    const user = auth.currentUser; // Get the current logged-in user
+    if (!user) return alert("Please log in to book!");
+
     try {
       const bookingData = {
         bookingNum: `GK${Math.floor(1000 + Math.random() * 9000)}`,
@@ -72,16 +73,15 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
         imageUrl: `https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&sig=${hotel.image_keyword}`,
         name: hotel.name,
         passenger: "wanyee",
-        price: typeof hotel.price === 'string' ? parseInt(hotel.price.replace(/[^0-9]/g, "")) : hotel.price,
+        price: hotel.price,
         status: "upcoming",
         type: "hotel",
-        userId: "4mLjskOCkeUgoXxHA5K6" 
+        userId: user.uid // 🚀 CHANGED: Use real UID, not hardcoded string
       };
       await addDoc(collection(db, "Booking"), bookingData);
       alert(`Success! Booked ${hotel.name}.`);
       setView('booking');
     } catch (err) {
-      console.error("Firebase Error:", err);
       alert("Firebase save failed.");
     }
   };
@@ -113,7 +113,7 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
             <Search size={18} color="#7b2cbf" />
             <input 
               type="text" 
-              placeholder="Enter destination" 
+              placeholder="Enter destination (e.g. London, Tokyo)" 
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
             />
@@ -121,82 +121,22 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
 
           <div className="search-row clickable" onClick={() => setShowDateModal(true)}>
             <Calendar size={18} color="#7b2cbf" />
-            <div className="row-text">
-              {startDate} - {endDate}
-            </div>
+            <div className="row-text">{startDate} - {endDate}</div>
             <span className="night-count">{calculateNights()} night(s)</span>
           </div>
 
           <div className="search-row clickable" onClick={() => setShowGuestModal(true)}>
             <User size={18} color="#7b2cbf" />
-            <div className="row-text">
-              {rooms} room, {adults} adults, {children} children
-            </div>
+            <div className="row-text">{rooms} room, {adults + children} guests</div>
           </div>
 
           <button className="btn-primary-search" onClick={handleSearch} disabled={loading}>
-            {loading ? <Loader2 className="animate-spin" size={18} /> : "Search with AI Agents"}
+            {loading ? <Loader2 className="animate-spin" size={18} /> : "Search Stays"}
           </button>
         </div>
-
-        {/* --- MODAL: Dates --- */}
-        {showDateModal && (
-          <div className="modal-overlay" onClick={() => setShowDateModal(false)}>
-            <div className="modal-card guest-modal" onClick={e => e.stopPropagation()}>
-              <X className="close-icon" onClick={() => setShowDateModal(false)} />
-              <h3>Select Dates</h3>
-              <div className="date-input-group">
-                <label>Check-in</label>
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                <label>Check-out</label>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
-              <button className="modal-action-btn" onClick={() => setShowDateModal(false)}>Confirm</button>
-            </div>
-          </div>
-        )}
-
-        {/* --- MODAL: Occupancy --- */}
-        {showGuestModal && (
-          <div className="modal-overlay" onClick={() => setShowGuestModal(false)}>
-            <div className="modal-card guest-modal" onClick={e => e.stopPropagation()}>
-              <X className="close-icon" onClick={() => setShowGuestModal(false)} />
-              <h3>Occupancy</h3>
-              
-              <div className="counter-row">
-                <span>Rooms</span>
-                <div className="counter-controls">
-                  <Minus onClick={() => setRooms(Math.max(1, rooms - 1))} />
-                  <span>{rooms}</span>
-                  <Plus onClick={() => setRooms(rooms + 1)} />
-                </div>
-              </div>
-
-              <div className="counter-row">
-                <span>Adults</span>
-                <div className="counter-controls">
-                  <Minus onClick={() => setAdults(Math.max(1, adults - 1))} />
-                  <span>{adults}</span>
-                  <Plus onClick={() => setAdults(adults + 1)} />
-                </div>
-              </div>
-
-              <div className="counter-row">
-                <span>Children</span>
-                <div className="counter-controls">
-                  <Minus onClick={() => setChildren(Math.max(0, children - 1))} />
-                  <span>{children}</span>
-                  <Plus onClick={() => setChildren(children + 1)} />
-                </div>
-              </div>
-
-              <button className="modal-action-btn" onClick={() => setShowGuestModal(false)}>Apply</button>
-            </div>
-          </div>
-        )}
       </main>
 
-      {/* --- MODAL: Date Selector --- */}
+      {/* --- MODALS (Restored Designs) --- */}
       {showDateModal && (
         <div className="modal-overlay" onClick={() => setShowDateModal(false)}>
           <div className="modal-card guest-modal" onClick={e => e.stopPropagation()}>
@@ -213,45 +153,29 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
         </div>
       )}
 
-      {/* --- MODAL: Guest Selector --- */}
       {showGuestModal && (
         <div className="modal-overlay" onClick={() => setShowGuestModal(false)}>
           <div className="modal-card guest-modal" onClick={e => e.stopPropagation()}>
             <X className="close-icon" onClick={() => setShowGuestModal(false)} />
             <h3>Occupancy</h3>
-            
-            <div className="counter-row">
-              <span>Rooms</span>
-              <div className="counter-controls">
-                <Minus onClick={() => setRooms(Math.max(1, rooms - 1))} />
-                <span>{rooms}</span>
-                <Plus onClick={() => setRooms(rooms + 1)} />
+            {[ {label: 'Rooms', val: rooms, set: setRooms, min: 1}, 
+               {label: 'Adults', val: adults, set: setAdults, min: 1}, 
+               {label: 'Children', val: children, set: setChildren, min: 0} 
+            ].map((item, i) => (
+              <div key={i} className="counter-row">
+                <span>{item.label}</span>
+                <div className="counter-controls">
+                  <Minus onClick={() => item.set(Math.max(item.min, item.val - 1))} />
+                  <span>{item.val}</span>
+                  <Plus onClick={() => item.set(item.val + 1)} />
+                </div>
               </div>
-            </div>
-
-            <div className="counter-row">
-              <span>Adults</span>
-              <div className="counter-controls">
-                <Minus onClick={() => setAdults(Math.max(1, adults - 1))} />
-                <span>{adults}</span>
-                <Plus onClick={() => setAdults(adults + 1)} />
-              </div>
-            </div>
-
-            <div className="counter-row">
-              <span>Children</span>
-              <div className="counter-controls">
-                <Minus onClick={() => setChildren(Math.max(0, children - 1))} />
-                <span>{children}</span>
-                <Plus onClick={() => setChildren(children + 1)} />
-              </div>
-            </div>
-
+            ))}
             <button className="modal-action-btn" onClick={() => setShowGuestModal(false)}>Apply</button>
           </div>
         </div>
       )}
-
+      <BottomNav setView={setView} currentView="home" />
     </div>
   );
 };
