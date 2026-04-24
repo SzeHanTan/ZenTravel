@@ -1,7 +1,7 @@
-import { initializeApp } from "firebase/app";
+import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage"; // 1. Import Storage
+import { getStorage } from "firebase/storage"; 
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,8 +17,7 @@ if (!firebaseConfig.apiKey) {
   console.warn("Firebase API Key is missing! Check your .env file and restart your terminal.");
 }
 
-const app = initializeApp(firebaseConfig);
-
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 // Export services
 export const auth = getAuth(app);
 export const db = getFirestore(app);

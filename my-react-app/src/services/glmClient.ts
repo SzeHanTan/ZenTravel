@@ -30,7 +30,8 @@ export class GLMClient {
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       if (attempt > 0) {
-        await new Promise((r) => setTimeout(r, 800 * attempt)); // shorter retry delay
+        // Shorter retry delay (800ms, 1600ms...)
+        await new Promise((r) => setTimeout(r, 800 * attempt)); 
       }
 
       const controller = new AbortController();
@@ -56,7 +57,7 @@ export class GLMClient {
 
         // Retry on 5xx (includes 504 Gateway Timeout)
         if (response.status >= 500) {
-          lastErr = new Error(`ILMU ${response.status} — retrying`);
+          lastErr = new Error(`ILMU ${response.status} — server error, retrying...`);
           continue;
         }
 
@@ -66,6 +67,9 @@ export class GLMClient {
         }
 
         const data = (await response.json()) as ILMUResponse;
+        
+        // Debugging log to help you see what the AI is actually sending
+        console.log("RAW ILMU DATA:", data);
 
         if (data.error?.message) {
           throw new Error(`ILMU API error: ${data.error.message}`);
@@ -80,19 +84,23 @@ export class GLMClient {
 
       } catch (err) {
         clearTimeout(timer);
+        
         if (err instanceof DOMException && err.name === 'AbortError') {
-          lastErr = new Error('GLM request timed out after 25 s');
+          lastErr = new Error(`GLM request timed out after ${CLIENT_TIMEOUT_MS / 1000}s`);
           continue;
         }
+        
         // Network errors are also retryable
         if (err instanceof TypeError) {
           lastErr = err;
           continue;
         }
+        
         throw err; // non-retryable (auth, bad request, etc.)
       }
     }
 
+    // If we get here, it means all retries failed
     throw lastErr;
   }
 }

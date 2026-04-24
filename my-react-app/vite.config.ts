@@ -6,12 +6,25 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // Proxy /ilmu-api/* → https://api.ilmu.ai/* to avoid CORS in dev
       '/ilmu-api': {
         target: 'https://api.ilmu.ai',
         changeOrigin: true,
+        secure: false,
         rewrite: (path) => path.replace(/^\/ilmu-api/, ''),
-        secure: true,
+        
+        // 🚀 MAXIMUM PATIENCE SETTINGS
+        timeout: 120000,      // Wait 120s for the target server to respond
+        proxyTimeout: 120000, // Wait 120s for the proxy connection
+        
+        headers: {
+          Connection: 'keep-alive',
+        },
+
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('--- Vite Proxy Error ---', err);
+          });
+        },
       },
     },
   },

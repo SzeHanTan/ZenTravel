@@ -154,3 +154,101 @@
     cursor: pointer;
     color: #666;
 }
+
+.ai-insight-box {
+  background: rgba(123, 44, 191, 0.05);
+  border-left: 3px solid #7b2cbf;
+  padding: 8px 12px;
+  margin: 10px 0;
+  border-radius: 4px;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* Container Background */
+.zen-results-wrapper {
+  background-color: #f8f9fe;
+  min-height: 100vh;
+  padding-bottom: 30px;
+}
+
+/* Header Design */
+.zen-results-header {
+  background: #7b2cbf;
+  color: white;
+  padding: 20px;
+  border-radius: 0 0 25px 25px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 15px rgba(123, 44, 191, 0.2);
+}
+
+.header-nav { display: flex; align-items: center; gap: 15px; }
+.meta-row { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; opacity: 0.9; margin-top: 4px; }
+.dot { font-size: 1.2rem; line-height: 0; }
+
+/* The Hotel Card */
+.organized-hotel-card {
+  background: white;
+  margin: 15px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+.card-media { position: relative; height: 180px; }
+.card-media img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Floating Badges */
+.rating-tag {
+  position: absolute; top: 12px; left: 12px;
+  background: rgba(255,255,255,0.9);
+  padding: 4px 10px; border-radius: 12px;
+  display: flex; align-items: center; gap: 4px;
+  font-weight: bold; font-size: 0.8rem;
+}
+
+.agent-choice-badge {
+  position: absolute; bottom: 12px; left: 12px;
+  background: #7b2cbf; color: white;
+  padding: 5px 12px; border-radius: 20px;
+  display: flex; align-items: center; gap: 5px; font-size: 0.75rem;
+}
+
+/* Card Body Spacing */
+.card-body { padding: 15px; }
+.hotel-title { font-size: 1.15rem; color: #2d3436; margin-bottom: 4px; }
+.location-text { display: flex; align-items: center; gap: 4px; color: #636e72; font-size: 0.85rem; }
+
+/* AI Insight Box */
+.ai-insight-box {
+  background: #f3ebff;
+  border-left: 4px solid #7b2cbf;
+  padding: 10px; margin: 12px 0;
+  border-radius: 0 8px 8px 0;
+  display: flex; gap: 10px;
+}
+.ai-insight-box p { font-style: italic; font-size: 0.85rem; color: #4b0082; }
+
+/* Amenities (The Spacing Fix) */
+.amenities-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+.amenity-pill {
+  background: #f1f2f6; color: #2d3436;
+  padding: 4px 12px; border-radius: 15px; font-size: 0.75rem;
+}
+
+/* Footer (The Layout Fix) */
+.card-action-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid #eee; padding-top: 12px;
+}
+
+.price-value { font-size: 1.3rem; font-weight: 800; color: #7b2cbf; }
+.price-label { font-size: 0.8rem; color: #636e72; }
+
+.zen-book-now-btn {
+  background: #7b2cbf; color: white; border: none;
+  padding: 10px 20px; border-radius: 12px;
+  display: flex; align-items: center; gap: 5px; font-weight: bold;
+}
