@@ -54,6 +54,7 @@ function App() {
   const [authLoaded, setAuthLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showFloatingChat, setShowFloatingChat] = useState(false);
+  const [pendingSearch, setPendingSearch] = useState<{origin: string, destination: string} | null>(null);
 
   // States
   const [globalCurrency, setGlobalCurrency] = useState(() => {
@@ -123,6 +124,11 @@ function App() {
     try { await loginWithGoogle(); setView('home'); } catch (e) { console.error(e); }
   }
 
+  const handleAiRouting = (view: string, data: any) => {
+    setPendingSearch(data);
+    setView(view as ViewState);
+  };
+
   const authenticatedViews: ViewState[] = [
     'home', 'profile', 'chatbot', 'booking', 'notification', 
     'view-ticket', 'refund', 'about', 'help', 
@@ -141,6 +147,8 @@ function App() {
     };
 
     switch (view) {
+      // 🤖 AI Integration: Pass setPendingSearch to HomePage
+      case 'home': return <HomePage {...commonProps} setPendingSearch={setPendingSearch} />;
       // Pass selectedTicketId as selectedId to HomePage
       case 'home': return <HomePage {...commonProps} selectedId={selectedTicketId} />;
       
@@ -157,8 +165,24 @@ function App() {
         />
       );
       
-      case 'hotels': return <HotelsPage {...commonProps} />;
-      case 'flights': return <FlightsPage {...commonProps} />;
+      // 🚀 AMENDED: Added pendingSearch and clearSearch to HotelsPage
+      case 'hotels': return (
+        <HotelsPage 
+          {...commonProps} 
+          pendingSearch={pendingSearch} 
+          clearSearch={() => setPendingSearch(null)} 
+        />
+      );
+      
+      // 🤖 AI Integration: Pass pendingSearch and clear function to FlightsPage
+      case 'flights': return (
+        <FlightsPage 
+          {...commonProps} 
+          pendingSearch={pendingSearch} 
+          clearSearch={() => setPendingSearch(null)} 
+        />
+      );
+      
       case 'insurance': return <InsurancePage {...commonProps} />;
       case 'tripplanner': return <TripPlannerPage {...commonProps} />;
       case 'manual-planner': return <ManualPlannerPage {...commonProps} />;

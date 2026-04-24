@@ -107,7 +107,7 @@ const CITY_TO_IATA: Record<string, string> = {
 
 export function toIATA(city: string): string {
   const normalized = city.toLowerCase().trim();
-  return CITY_TO_IATA[normalized] ?? city.toUpperCase().slice(0, 3);
+  return CITY_TO_IATA[normalized] || city.toUpperCase().slice(0, 3);
 }
 
 // ─── Route Data ──────────────────────────────────────────────────────────────

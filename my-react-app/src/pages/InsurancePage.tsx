@@ -1,118 +1,184 @@
-import { useState } from 'react';
-import { ArrowLeft, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, X, Loader2, CheckCircle, ShieldCheck, Plane, Building, Shield } from 'lucide-react';
+import { getInsurancePlans, type InsurancePlan } from '../services/mockInsuranceAPI';
+import { db, auth } from '../services/firebase';
+import { collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import "../styles/InsurancePage.css";
 
-export const InsurancePage = ({ setView }: { setView: (v: string) => void }) => {
-  const [showBookingsModal, setShowBookingsModal] = useState(false);
-  const [showPoliciesModal, setShowPoliciesModal] = useState(false);
+interface InsuranceProps {
+  setView: (v: string) => void;
+  pendingSearch?: { origin: string; destination: string } | null;
+  clearSearch?: () => void;
+}
 
-  // Generated Content for Modals
-  const bookings = [
-    { id: 'BK102', destination: 'Tokyo, Japan', date: '28/04/2026', status: 'Uninsured' },
-    { id: 'BK105', destination: 'Bali, Indonesia', date: '15/05/2026', status: 'Uninsured' }
-  ];
+export const InsurancePage: React.FC<InsuranceProps> = ({ setView, pendingSearch, clearSearch }) => {
+  const [plans, setPlans] = useState<InsurancePlan[]>([]);
+  const [uninsuredTrips, setUninsuredTrips] = useState<any[]>([]);
+  const [protectedTrips, setProtectedTrips] = useState<any[]>([]); // 🚀 New Section State
+  const [loading, setLoading] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState<InsurancePlan | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<string>("");
+  const [isBuying, setIsBuying] = useState(false);
 
-  const policies = [
-    { id: 'POL-9921', type: 'Overseas PA', expiry: '02/05/2026', status: 'Active' },
-    { id: 'POL-4410', type: 'Domestic PA', expiry: '12/12/2025', status: 'Expired' }
-  ];
+  const isInternational = (destination: string) => {
+    const malaysianCities = ['kl', 'kuala lumpur', 'kul', 'penang', 'pen', 'langkawi', 'lgk', 'johor', 'malacca'];
+    const lowerDest = destination?.toLowerCase() || "";
+    return !malaysianCities.some(city => lowerDest.includes(city));
+  };
+
+  const fetchData = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const planData = await getInsurancePlans();
+      setPlans(planData);
+
+      const q = query(collection(db, "Booking"), where("userId", "==", user.uid));
+      const snap = await getDocs(q);
+      const allBookings = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      
+      // 1. Identify linked IDs and active trips
+      const insuredIds = allBookings.filter(b => b.type === 'insurance').map(i => i.linkedTripId);
+      
+      // 🚀 FILTER: Only trips that are NOT 'cancelled'
+      const validTrips = allBookings.filter(b => 
+        (b.type === 'flight' || b.type === 'hotel') && b.status !== 'cancelled'
+      );
+
+      // 2. Separate into Uninsured vs Protected
+      setUninsuredTrips(validTrips.filter(t => !insuredIds.includes(t.id)));
+      setProtectedTrips(validTrips.filter(t => insuredIds.includes(t.id)));
+
+    } catch (error) { console.error(error); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    fetchData();
+    if (pendingSearch && clearSearch) clearSearch();
+  }, []);
+
+  const getFilteredTrips = () => {
+    if (!selectedPlan) return [];
+    return uninsuredTrips.filter(trip => {
+      const dest = trip.to || trip.name;
+      const international = isInternational(dest);
+      return selectedPlan.type === 'overseas' ? international : !international;
+    });
+  };
+
+  const handleBuyInsurance = async () => {
+    const user = auth.currentUser;
+    if (!user || !selectedPlan || !selectedTripId) return;
+    setIsBuying(true);
+    try {
+      await addDoc(collection(db, "Booking"), {
+        userId: user.uid,
+        linkedTripId: selectedTripId,
+        type: 'insurance',
+        name: selectedPlan.title,
+        price: selectedPlan.priceDisplay,
+        status: 'valid',
+        paymentStatus: 'paid',
+        timestamp: serverTimestamp()
+      });
+      await fetchData(); // Refresh list
+      setSelectedPlan(null);
+    } catch (error) { alert("Error saving."); }
+    finally { setIsBuying(false); }
+  };
 
   return (
-    <div className="home-page fade-in">
+    <div className="insurance-page-white fade-in">
       <header className="home-header">
-        <ArrowLeft onClick={() => setView('home')} style={{ cursor: 'pointer', marginRight: '10px' }} />
+        <ArrowLeft onClick={() => setView('home')} style={{ cursor: 'pointer' }} />
         ZenTravel
       </header>
 
       <main className="insurance-container">
-        <p style={{ fontWeight: 'bold', marginBottom: '20px' }}>Travel Insurance</p>
+        <h2 className="page-title-dark">Choose Your Protection</h2>
 
-        {/* --- Card 1: Overseas --- */}
-        <div className="insurance-card">
-          <h3>Travel PA - Overseas</h3>
-          <ul>
-            <li>Overseas medical expenses up to RM 300,000</li>
-            <li>Cancellation or postponement RM 20,000</li>
-            <li>Baggage and personal effects RM 5,000</li>
-          </ul>
-          <div className="price-tag">From RM 55.00</div>
-        </div>
-
-        {/* --- Card 2: Domestic --- */}
-        <div className="insurance-card">
-          <h3>Travel PA - Domestic</h3>
-          <ul>
-            <li>Medical expenses RM 50,000</li>
-            <li>Travel delay RM 1,000</li>
-            <li>Baggage and personal effects RM 2,000</li>
-          </ul>
-          <div className="price-tag">From RM 15.00</div>
-        </div>
-
-        {/* --- Yellow Action Buttons --- */}
-        <div className="action-row">
-          <button className="btn-yellow" onClick={() => setShowBookingsModal(true)}>
-            My bookings
-          </button>
-          <button className="btn-yellow" onClick={() => setShowPoliciesModal(true)}>
-            My Policies
-          </button>
-        </div>
-
-        <div className="declaration-text">
-          Declaration: By purchasing, you agree to the terms of service and confirm that all travelers are fit for travel...
-        </div>
-
-        {/* --- MODAL: My Bookings --- */}
-        {showBookingsModal && (
-          <div className="modal-overlay" onClick={() => setShowBookingsModal(false)}>
-            <div className="modal-card date-picker-modal" onClick={e => e.stopPropagation()}>
-              <X className="close-icon" onClick={() => setShowBookingsModal(false)} />
-              <h3 className="modal-title-purple">Current Bookings</h3>
-              <div className="modal-list">
-                {bookings.map(b => (
-                  <div key={b.id} className="modal-item">
-                    <h4>{b.destination}</h4>
-                    <p>Booking ID: {b.id}</p>
-                    <p>Travel Date: {b.date}</p>
-                    <span className="status-badge" style={{background: '#ffebee', color: '#c62828'}}>
-                        {b.status}
-                    </span>
+        {loading ? (
+          <div className="loader-box"><Loader2 className="animate-spin" size={32} color="#7b2cbf" /></div>
+        ) : (
+          <>
+            <div className="plans-stack">
+              {plans.map((plan) => (
+                <div key={plan.id} className="insurance-purple-card">
+                  <div className="card-content">
+                    <h3>{plan.title}</h3>
+                    <ul className="mini-benefits">
+                      {plan.coverages.slice(0, 2).map((c, i) => (
+                        <li key={i}><CheckCircle size={12} /> {c}</li>
+                      ))}
+                    </ul>
                   </div>
-                ))}
-              </div>
-              <button className="confirm-btn-purple" onClick={() => setShowBookingsModal(false)}>Close</button>
+                  <div className="card-action-bottom-right">
+                    <button className="price-pill-btn" onClick={() => setSelectedPlan(plan)}>
+                      <span className="from-text">From</span>
+                      <span className="actual-price">{plan.priceDisplay.replace('From ', '')}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+
+            {/* 🚀 NEW SECTION: Protected Trips */}
+            {protectedTrips.length > 0 && (
+              <section className="protected-section">
+                <h3 className="section-subtitle">Active Protection</h3>
+                <div className="protected-list">
+                  {protectedTrips.map(trip => (
+                    <div key={trip.id} className="protected-item">
+                       <ShieldCheck size={18} color="#2e7d32" />
+                       <div className="protected-info">
+                          <span className="dest">{trip.to || trip.name}</span>
+                          <span className="date">Insured • Trip Date: {trip.date}</span>
+                       </div>
+                       <span className="status-pill">Covered</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
 
-        {/* --- MODAL: My Policies --- */}
-        {showPoliciesModal && (
-          <div className="modal-overlay" onClick={() => setShowPoliciesModal(false)}>
-            <div className="modal-card date-picker-modal" onClick={e => e.stopPropagation()}>
-              <X className="close-icon" onClick={() => setShowPoliciesModal(false)} />
-              <h3 className="modal-title-purple">My Policies</h3>
-              <div className="modal-list">
-                {policies.map(p => (
-                  <div key={p.id} className="modal-item">
-                    <h4>{p.type}</h4>
-                    <p>Policy No: {p.id}</p>
-                    <p>Expiry: {p.expiry}</p>
-                    <span className="status-badge" style={{
-                        background: p.status === 'Active' ? '#e8f5e9' : '#eeeeee',
-                        color: p.status === 'Active' ? '#2e7d32' : '#777'
-                    }}>
-                        {p.status}
-                    </span>
+        {selectedPlan && (
+          <div className="modal-overlay" onClick={() => setSelectedPlan(null)}>
+            <div className="modal-card luxe-modal" onClick={e => e.stopPropagation()}>
+              <X className="close-icon" onClick={() => setSelectedPlan(null)} />
+              <Shield size={40} color="#7b2cbf" style={{display:'block', margin:'0 auto 10px'}} />
+              <h3 style={{textAlign:'center', marginBottom:'15px'}}>{selectedPlan.title}</h3>
+              
+              <div className="trip-selection-area">
+                <label className="select-label">Select Trip to Insure:</label>
+                {getFilteredTrips().length > 0 ? (
+                  <div className="trip-list">
+                    {getFilteredTrips().map(trip => (
+                      <div key={trip.id} className={`trip-option ${selectedTripId === trip.id ? 'active' : ''}`} onClick={() => setSelectedTripId(trip.id)}>
+                        {trip.type === 'flight' ? <Plane size={16}/> : <Building size={16}/>}
+                        <div className="trip-info">
+                          <span className="trip-dest">{trip.to || trip.name}</span>
+                          <span className="trip-date">{trip.date}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <p className="no-trips-msg">No eligible uninsured trips found.</p>
+                )}
               </div>
-              <button className="confirm-btn-purple" onClick={() => setShowPoliciesModal(false)}>Close</button>
+
+              <button className="confirm-purchase-btn" onClick={handleBuyInsurance} disabled={isBuying || !selectedTripId}>
+                {isBuying ? "Processing..." : `Protect This Trip`}
+              </button>
             </div>
           </div>
         )}
       </main>
-
     </div>
   );
 };

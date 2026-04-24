@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, Users, PlaneTakeoff, PlaneLanding, ArrowUpDown, X, Plus, Minus, PlusCircle, Loader2, Check } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { BottomNav } from '../components/BottomNav';
@@ -16,7 +16,14 @@ const recommendations = [
 
 const FLIGHT_CLASSES = ["Economy", "Economy/premium economy", "Premium Economy", "Business/First", "Business", "First"];
 
-export const FlightsPage: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
+// 🚀 Updated Interface to include AI pendingSearch
+interface FlightProps {
+  setView: (v: string) => void;
+  pendingSearch?: { origin: string; destination: string } | null;
+  clearSearch?: () => void;
+}
+
+export const FlightsPage: React.FC<FlightProps> = ({ setView, pendingSearch, clearSearch }) => {
   const [tripType, setTripType] = useState('Return');
   const [viewMode, setViewMode] = useState<'search' | 'results'>('search');
   const [loading, setLoading] = useState(false);
@@ -37,25 +44,66 @@ export const FlightsPage: React.FC<{ setView: (v: string) => void }> = ({ setVie
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY 
   });
 
-  // 🛠️ Logic: Search Multiple Legs
+  // 🤖 AI INTELLIGENT AUTO-SEARCH LOGIC
+  useEffect(() => {
+    if (pendingSearch) {
+      const runAutoSearch = async () => {
+        // 1. Instantly fill the UI fields
+        setFlights([{ 
+            origin: pendingSearch.origin, 
+            destination: pendingSearch.destination, 
+            date: "2026-04-28" 
+        }]);
+        
+        setLoading(true);
+        try {
+          const allLegsResults = [];
+          
+          // 2. Auto-fetch the correct mock data based on AI inquiry
+          const leg1 = await searchFlights(pendingSearch.origin, pendingSearch.destination, flightClass);
+          allLegsResults.push({ 
+            title: `Outbound: ${pendingSearch.origin} to ${pendingSearch.destination}`, 
+            data: leg1 
+          });
+
+          // 3. If trip type is return, fetch the back leg automatically too
+          if (tripType === 'Return') {
+            const inbound = await searchFlights(pendingSearch.destination, pendingSearch.origin, flightClass);
+            allLegsResults.push({ 
+                title: `Inbound: ${pendingSearch.destination} to ${pendingSearch.origin}`, 
+                data: inbound 
+            });
+          }
+
+          setSourcedFlights(allLegsResults);
+          setViewMode('results'); // 4. Switch to results page immediately
+          
+          // 5. Clean up the AI handoff
+          if (clearSearch) clearSearch();
+        } catch (err) {
+          console.error("AI Auto-search error:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      runAutoSearch();
+    }
+  }, [pendingSearch]); // Only runs when AI provides new data
+
   const handleSearch = async () => {
     if (!flights[0].origin || !flights[0].destination) return alert("Please enter cities!");
-    
     setLoading(true);
     try {
       const allLegsResults = [];
-
-      // 1. Fetch Outbound / First Leg
       const leg1 = await searchFlights(flights[0].origin, flights[0].destination, flightClass);
       allLegsResults.push({ title: `Outbound: ${flights[0].origin} to ${flights[0].destination}`, data: leg1 });
 
-      // 2. Logic for Return Trip
       if (tripType === 'Return') {
         const inbound = await searchFlights(flights[0].destination, flights[0].origin, flightClass);
         allLegsResults.push({ title: `Inbound: ${flights[0].destination} to ${flights[0].origin}`, data: inbound });
       }
 
-      // 3. Logic for Multi-city (Starts from index 1)
       if (tripType === 'Multi-city') {
         for (let i = 1; i < flights.length; i++) {
           if (flights[i].origin && flights[i].destination) {
@@ -65,7 +113,7 @@ export const FlightsPage: React.FC<{ setView: (v: string) => void }> = ({ setVie
         }
       }
 
-      setSourcedFlights(allLegsResults); // Now an array of objects {title, data}
+      setSourcedFlights(allLegsResults);
       setViewMode('results');
     } catch (err) {
       alert("Error fetching flights.");
@@ -130,7 +178,6 @@ export const FlightsPage: React.FC<{ setView: (v: string) => void }> = ({ setVie
       <main className="flights-container">
         <h2 className="section-title">Flights</h2>
         
-        {/* RESTORED: background design card */}
         <div className="flight-search-card">
           <div className="trip-type-row">
             {['One-way', 'Return', 'Multi-city'].map(t => (
@@ -146,10 +193,9 @@ export const FlightsPage: React.FC<{ setView: (v: string) => void }> = ({ setVie
                 <PlaneTakeoff size={18} color="#7b2cbf" />
                 <input 
                   value={f.origin} 
-                  placeholder="Enter departure city (e.g. KUL)" /* 🚀 Clear hint */
+                  placeholder="Enter departure city" 
                   onChange={(e) => { const n = [...flights]; n[i].origin = e.target.value; setFlights(n); }} 
                 />
-                {/* 🚀 Update: Only show if it's NOT Multi-city and it's the first row */}
                 {tripType !== 'Multi-city' && i === 0 && (
                   <div className="exchange-icon" onClick={() => handleExchange(i)}>
                     <ArrowUpDown size={16} color="#7b2cbf" />
@@ -161,7 +207,7 @@ export const FlightsPage: React.FC<{ setView: (v: string) => void }> = ({ setVie
                 <PlaneLanding size={18} color="#7b2cbf" />
                 <input 
                   value={f.destination} 
-                  placeholder="Enter arrival city (e.g. Bali)" /* 🚀 Clear hint */
+                  placeholder="Enter arrival city" 
                   onChange={(e) => { const n = [...flights]; n[i].destination = e.target.value; setFlights(n); }} 
                 />
               </div>
