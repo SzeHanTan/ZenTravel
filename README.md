@@ -1,12 +1,3 @@
-<!-- App Logo --><div>
-  <img 
-  src="my-react-app/src/assets/zentravel_logo.png" 
-  alt="ZenTravel Logo" 
-  width="120"
-  style="border-radius: 50%; object-fit: cover;"
-/>
-
-</div>
 
 <div align="center">
 
