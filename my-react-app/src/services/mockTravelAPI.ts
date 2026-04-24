@@ -2,6 +2,8 @@
  * Mock Travel API — simulates Amadeus-style responses.
  */
 
+import { getHotelsFromRapidAPI } from './rapidApiService';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface FlightOffer {
@@ -28,6 +30,7 @@ export interface HotelOffer {
   amenity:   string;
   available: boolean;
   recommended?: boolean;
+  imageUrl?: string;
 }
 
 export interface TransportOffer {
@@ -216,6 +219,26 @@ const AIRPORT_HOTELS: Record<string, HotelOffer[]> = {
     { name: 'Pop! Hotel Airport Bali', stars: 3, distance: '5-min walk', priceMYR: 190, amenity: 'Free airport transfer', available: true },
     { name: 'Grand Mega Resort Bali Airport', stars: 4, distance: '3-min drive', priceMYR: 420, amenity: 'Balinese spa', available: true },
   ],
+  LHR: [
+    { name: 'Hilton London Heathrow', stars: 4, distance: 'Connected to T4', priceMYR: 850, amenity: 'Business lounge', available: true, recommended: true },
+    { name: 'Sofitel London Heathrow', stars: 5, distance: 'Connected to T5', priceMYR: 1200, amenity: 'Luxury spa', available: true },
+    { name: 'Premier Inn Heathrow', stars: 3, distance: 'Shuttle available', priceMYR: 450, amenity: 'Family friendly', available: true },
+  ],
+  NRT: [
+    { name: 'Narita Airport Rest House', stars: 3, distance: 'Inside airport grounds', priceMYR: 380, amenity: 'Quiet rooms', available: true, recommended: true },
+    { name: 'Hotel Nikko Narita', stars: 4, distance: '10-min shuttle', priceMYR: 520, amenity: 'Outdoor pool', available: true },
+    { name: 'ANA Crowne Plaza Narita', stars: 4, distance: '15-min shuttle', priceMYR: 580, amenity: 'Sky dining', available: true },
+  ],
+  CDG: [
+    { name: 'Sheraton Paris Airport Hotel', stars: 4, distance: 'Inside T2', priceMYR: 1100, amenity: 'Direct terminal access', available: true, recommended: true },
+    { name: 'Novotel Paris CDG Airport', stars: 4, distance: '3-min walk', priceMYR: 780, amenity: 'Modern design', available: true },
+    { name: 'CitizenM Paris CDG', stars: 4, distance: '5-min walk', priceMYR: 650, amenity: 'Tech-savvy rooms', available: true },
+  ],
+  SIN: [
+    { name: 'Crowne Plaza Changi Airport', stars: 5, distance: 'Connected to T3', priceMYR: 950, amenity: 'World-class airport hotel', available: true, recommended: true },
+    { name: 'YOTELAIR Singapore Changi', stars: 4, distance: 'Inside Jewel', priceMYR: 620, amenity: 'Smart beds', available: true },
+    { name: 'Aerotel Singapore', stars: 3, distance: 'Transit hotel T1', priceMYR: 540, amenity: 'Outdoor swimming pool', available: true },
+  ],
 };
 
 const TRANSPORT_OFFERS: Record<string, TransportOffer[]> = {
@@ -305,6 +328,38 @@ const COMPENSATION: Record<string, CompensationResult> = {
 // ─── Public API functions ──────────────────────────────────────────────────────
 
 export async function searchHotels(airportRaw: string, excludeName?: string): Promise<HotelOffer[]> {
+  try {
+    const defaultCheckIn = new Date();
+    defaultCheckIn.setDate(defaultCheckIn.getDate() + 1);
+    const defaultCheckOut = new Date();
+    defaultCheckOut.setDate(defaultCheckOut.getDate() + 2);
+    
+    const checkInStr = defaultCheckIn.toISOString().split('T')[0];
+    const checkOutStr = defaultCheckOut.toISOString().split('T')[0];
+
+    const rapidResults = await getHotelsFromRapidAPI(airportRaw, checkInStr, checkOutStr, 2);
+    
+    if (rapidResults.length > 0) {
+      let mapped = rapidResults.map((r: any) => ({
+        name: r.name,
+        stars: parseFloat(r.rating) || 4,
+        distance: r.location,
+        priceMYR: parseFloat(r.price.replace(/[^0-9.]/g, '')) || 400,
+        amenity: r.amenities?.[0] || 'Comfortable stay',
+        available: true,
+        recommended: r.isRecommended,
+        imageUrl: r.imageUrl
+      }));
+      
+      if (excludeName) {
+        mapped = mapped.filter((h: any) => h.name !== excludeName);
+      }
+      return mapped;
+    }
+  } catch (err) {
+    console.warn("RapidAPI hotel search failed, falling back to mock data.", err);
+  }
+
   await new Promise((r) => setTimeout(r, 200));
   const code = toIATA(airportRaw);
   const hotels = AIRPORT_HOTELS[code] ?? DEFAULT_HOTELS;

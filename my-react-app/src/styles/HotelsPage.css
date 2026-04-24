@@ -293,17 +293,75 @@
   text-align: center; padding: 60px 20px; color: #b2bec3;
 }
 
-/* Header Design */
-.zen-results-header {
-  background: #7b2cbf;
-  color: white;
-  padding: 20px;
-  border-radius: 0 0 25px 25px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: 0 4px 15px rgba(123, 44, 191, 0.2);
+/* 🎚️ Price Filter Bar */
+.zen-filter-bar {
+  background: white;
+  margin: 15px 20px;
+  padding: 15px 20px;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(123, 44, 191, 0.08);
+  border: 1px solid #f0f0f5;
 }
+
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.filter-title {
+  font-weight: 800;
+  color: #2d3436;
+  font-size: 0.9rem;
+}
+
+.filter-value {
+  color: #7b2cbf;
+  font-weight: 700;
+  font-size: 0.85rem;
+  background: #f3ebff;
+  padding: 4px 10px;
+  border-radius: 10px;
+}
+
+.zen-price-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 5px;
+  outline: none;
+  margin: 10px 0;
+}
+
+.zen-price-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  background: #7b2cbf;
+  cursor: pointer;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 4px 10px rgba(123, 44, 191, 0.3);
+  transition: transform 0.2s;
+}
+
+.zen-price-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.filter-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #95afc0;
+  font-weight: 600;
+  margin-top: 5px;
+}
+
+/* Header Design ... (rest of the file) */
 
 .header-nav { display: flex; align-items: center; gap: 15px; }
 .meta-row { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; opacity: 0.9; margin-top: 4px; }
