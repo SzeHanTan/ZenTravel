@@ -3,7 +3,6 @@ import {
   ArrowLeft, Calendar, User, X, MapPin, 
   PlaneTakeoff
 } from 'lucide-react';
-import { BottomNav } from '../components/BottomNav';
 import "../styles/CarRentalPage.css";
 
 export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => {
@@ -210,7 +209,6 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
         </div>
       )}
 
-      <BottomNav setView={setView} currentView="home" />
     </div>
   );
 };
