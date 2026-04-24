@@ -14,10 +14,15 @@ export interface FlightOffer {
   airline:      string;
   from:         string;
   to:           string;
+  // Brain Master fields
   departIn:     string;
+  seatsLeft:    number;
+  // Trip Planner fields (also present)
+  timeDepart:   string;
+  timeLanding:  string;
+  duration:     string;
   cabin:        string;
   priceMYR:     number;
-  seatsLeft:    number;
   recommended?: boolean;
   note?:        string;
 }
@@ -56,11 +61,8 @@ export type ToolResult =
 const CITY_TO_IATA: Record<string, string> = {
   // Malaysia
   'kuala lumpur': 'KUL', 'kl': 'KUL', 'klia': 'KUL', 'kul': 'KUL',
-  'mly': 'KUL', 'malaysia': 'KUL', 'msia': 'KUL', // 🚀 Added "mly" mapping
+  'mly': 'KUL', 'malaysia': 'KUL', 'msia': 'KUL',
   'penang': 'PEN', 'pen': 'PEN',
-  'bali': 'DPS', 'denpasar': 'DPS', 'dps': 'DPS',
-  'london': 'LHR', 'lhr': 'LHR', 'heathrow': 'LHR',
-  'tokyo': 'NRT', 'narita': 'NRT', 'nrt': 'NRT',
   // Japan
   'tokyo': 'NRT', 'narita': 'NRT', 'nrt': 'NRT',
   'haneda': 'HND', 'hnd': 'HND',
@@ -180,32 +182,44 @@ const calculateArrival = (departTime: string, durationMins: number) => {
 };
 
 // --- Updated Search Function ---
-export async function searchFlights(fromRaw: string, toRaw: string, selectedClass: string) {
+export async function searchFlights(
+  fromRaw:       string,
+  toRaw:         string,
+  countOrClass:  string | number = 3,
+): Promise<FlightOffer[]> {
   await new Promise((r) => setTimeout(r, 400));
-  
-  const from = toIATA(fromRaw);
-  const to = toIATA(toRaw);
-  const routeKey = `${from}-${to}`;
-  const route = ROUTES[routeKey] ?? DEFAULT_ROUTE;
-  
-  // Varied departure times for a realistic list
-  const startTimes = ["07:30", "11:15", "15:45", "22:10"];
-  const durationStr = `${Math.floor(route.durationMins / 60)}h ${route.durationMins % 60}m`;
 
-  return route.airlines.map((al, i) => {
-    const depart = startTimes[i] || "09:00";
+  const from = toIATA(fromRaw);
+  const to   = toIATA(toRaw);
+  const routeKey = `${from}-${to}`;
+  const route    = ROUTES[routeKey] ?? DEFAULT_ROUTE;
+
+  // Accept either a class string or a count number (Brain Master passes count)
+  const cabin = typeof countOrClass === 'string' ? countOrClass : 'Economy';
+  const count = typeof countOrClass === 'number'  ? countOrClass : 3;
+
+  const startTimes  = ['07:30', '11:15', '15:45', '22:10'];
+  const durationStr = `${Math.floor(route.durationMins / 60)}h ${route.durationMins % 60}m`;
+  const seats       = [9, 4, 2, 6];
+
+  return route.airlines.slice(0, Math.max(count, 1)).map((al, i) => {
+    const depart   = startTimes[i] ?? '09:00';
+    const departIn = `+${Math.round((i + 1) * 2.5)}h`;
     return {
-      airline: al.name,
+      airline:      al.name,
       flightNumber: `${al.code}${100 + i * 23}`,
       from,
       to,
-      timeDepart: depart,
+      departIn,
+      seatsLeft:   seats[i] ?? 5,
+      timeDepart:  depart,
       timeLanding: calculateArrival(depart, route.durationMins),
-      duration: durationStr,
-      priceMYR: Math.round(route.basePriceMYR * (1 + i * 0.15)),
-      cabin: selectedClass,
-      recommended: i === 0
-    };
+      duration:    durationStr,
+      cabin,
+      priceMYR:    Math.round(route.basePriceMYR * (1 + i * 0.15)),
+      recommended: i === 0,
+      note:        i === 0 ? 'Earliest available — recommended' : i === 1 ? 'Good value' : 'Premium option',
+    } satisfies FlightOffer;
   });
 }
 
@@ -397,27 +411,33 @@ export async function checkCompensation(disruptionType: string): Promise<Compens
 }
 
 export async function executeTool(call: ToolCallPlan): Promise<ToolResult> {
+  // Use optional chaining throughout — GLM may omit `params` on a malformed response
+  const p = call.params ?? {};
   switch (call.tool) {
     case 'search_flights':
       return {
         tool:   'search_flights',
         result: await searchFlights(
-          String(call.params.from ?? call.params.origin ?? ''),
-          String(call.params.to   ?? call.params.destination ?? ''),
-          Number(call.params.count ?? 3),
+          String(p.from ?? p.origin ?? ''),
+          String(p.to   ?? p.destination ?? ''),
+          Number(p.count ?? 3),
         ),
       };
     case 'search_hotels':
       return {
         tool:   'search_hotels',
-        result: await searchHotels(String(call.params.airport ?? call.params.from ?? '')),
+        result: await searchHotels(String(p.airport ?? p.from ?? p.origin ?? '')),
       };
     case 'check_compensation':
       return {
         tool:   'check_compensation',
-        result: await checkCompensation(String(call.params.type ?? call.params.disruption_type ?? 'unknown')),
+        result: await checkCompensation(String(p.type ?? p.disruption_type ?? 'unknown')),
       };
     default:
-      throw new Error(`Unknown tool: ${call.tool}`);
+      // Return a no-op compensation result for any unknown tool name
+      return {
+        tool:   'check_compensation' as const,
+        result: await checkCompensation('unknown'),
+      };
   }
 }
