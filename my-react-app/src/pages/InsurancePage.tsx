@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
-import { BottomNav } from '../components/BottomNav';
 import "../styles/InsurancePage.css";
 
 export const InsurancePage = ({ setView }: { setView: (v: string) => void }) => {
@@ -114,7 +113,6 @@ export const InsurancePage = ({ setView }: { setView: (v: string) => void }) => 
         )}
       </main>
 
-      <BottomNav setView={setView} currentView="home" />
     </div>
   );
 };

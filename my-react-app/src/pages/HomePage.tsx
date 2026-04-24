@@ -11,7 +11,6 @@ import {
   getDocs,
   serverTimestamp
 } from 'firebase/firestore';
-import { BottomNav } from '../components/BottomNav';
 import '../App.css';
 import "../styles/HomePage.css";
 
@@ -174,7 +173,6 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency }) => {
         )}
       </main>
 
-      <BottomNav setView={setView} currentView="home" />
     </div>
   );
 };

@@ -5,7 +5,7 @@ import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/f
 import { 
   Ticket, Wallet, MapPin, UserCircle, Heart, Star, 
   Globe, Eye, CircleDollarSign, Ruler, HelpCircle, Info,
-  Search, X, InfoIcon, ChevronLeft, Check
+  X, InfoIcon, ChevronLeft, Check
 } from 'lucide-react';
 import { Achievement } from './Achievement'; 
 import { Currency } from './Currency'; 

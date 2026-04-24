@@ -4,7 +4,6 @@ import {
   MapPin, Utensils, Plane, Building2, Lightbulb,
   ChevronRight, Clock, Star, Loader2, CheckCircle,
 } from 'lucide-react';
-import { BottomNav } from '../components/BottomNav';
 import { searchFlights, searchHotels, type FlightOffer, type HotelOffer } from '../services/mockTravelAPI';
 import {
   getDestinationInfo,
@@ -488,7 +487,6 @@ export const TripPlannerPage = ({ setView }: { setView: (v: string) => void }) =
           </div>
         )}
 
-        <BottomNav setView={setView} currentView="home" />
       </div>
     );
   }
@@ -734,7 +732,6 @@ export const TripPlannerPage = ({ setView }: { setView: (v: string) => void }) =
         </div>
       </main>
 
-      <BottomNav setView={setView} currentView="home" />
     </div>
   );
 };

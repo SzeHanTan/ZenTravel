@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronLeft, Wallet, Gift, History } from 'lucide-react';
 import { db } from '../services/firebase'; 
 import { doc, updateDoc } from 'firebase/firestore'; 

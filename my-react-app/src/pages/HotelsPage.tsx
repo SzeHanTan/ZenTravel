@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Search, Calendar, User, ArrowLeft, X, Plus, Minus, Loader2, Star, MapPin } from 'lucide-react';
-import { BottomNav } from '../components/BottomNav';
 import { getHotels } from '../services/hotelService';
 import "../styles/HotelsPage.css";
 
@@ -227,7 +226,6 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
         </div>
       )}
 
-      <BottomNav setView={setView} currentView="home" />
     </div>
   );
 };
