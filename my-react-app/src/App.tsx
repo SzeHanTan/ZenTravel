@@ -6,7 +6,7 @@ import mascotImg from './assets/MASCOT-removebg-preview.png';
 import { FloatingChatWidget } from './components/FloatingChatWidget';
 
 // Services
-import { loginWithGoogle } from './services/authService';
+import { loginWithGoogle, registerUser, loginUser } from './services/authService';
 
 // Pages
 const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
@@ -38,7 +38,7 @@ import { BottomNav } from './components/BottomNav';
 import './App.css';
 
 type ViewState = 
-  | 'landing' | 'auth' | 'register' | 'home' | 'profile' 
+  | 'landing' | 'auth' | 'register' | 'login' | 'home' | 'profile' 
   | 'chatbot' | 'booking' | 'notification' | 'view-ticket' 
   | 'refund' | 'about' | 'help' 
   | 'edit-profile' | 'saved' | 'my-reviews'
@@ -55,6 +55,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showFloatingChat, setShowFloatingChat] = useState(false);
   const [pendingSearch, setPendingSearch] = useState<{origin: string, destination: string} | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   // States
   const [globalCurrency, setGlobalCurrency] = useState(() => {
@@ -122,6 +124,26 @@ function App() {
 
   async function handleGoogle() {
     try { await loginWithGoogle(); setView('home'); } catch (e) { console.error(e); }
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await registerUser(email, password);
+      setView('home');
+    } catch (e: any) {
+      alert(e.message);
+    }
+  }
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await loginUser(email, password);
+      setView('home');
+    } catch (e: any) {
+      alert(e.message);
+    }
   }
 
   const handleAiRouting = (view: string, data: any) => {
@@ -213,12 +235,17 @@ function App() {
     <div className="app-container">
       {view === 'landing' && <LandingPage />}
       
-      {(view === 'auth' || view === 'register') && (
+      {(view === 'auth' || view === 'register' || view === 'login') && (
         <Suspense fallback={pageLoader}>
           <AuthPage 
-            view={view} setView={setView} onGoogle={handleGoogle} 
-            onEmailClick={() => setView('register')}
-            onRegister={async () => {}} setEmail={() => {}} setPassword={() => {}}
+            view={view as any} 
+            setView={setView} 
+            onGoogle={handleGoogle} 
+            onEmailClick={() => setView('login')}
+            onRegister={handleRegister}
+            onLogin={handleLogin}
+            setEmail={setEmail} 
+            setPassword={setPassword}
           />
         </Suspense>
       )}
