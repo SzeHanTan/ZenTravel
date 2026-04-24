@@ -1,12 +1,12 @@
-<!-- App Logo -->
-<p align="center">
+<!-- App Logo --><div>
   <img 
-    src="my-react-app/src/assets/zentravel_logo.png" 
-    alt="ZenTravel Logo" 
-    width="120"
-    style="border-radius: 50%; object-fit: cover;"
-  />
-</p>
+  src="my-react-app/src/assets/zentravel_logo.png" 
+  alt="ZenTravel Logo" 
+  width="120"
+  style="border-radius: 50%; object-fit: cover;"
+/>
+
+</div>
 
 <div align="center">
 
@@ -182,5 +182,5 @@ Deterministic mock travel APIs (mockTravelAPI.ts) simulate real-world scenarios,
 ---
 
 <div align="center">
-<b>Built with ❤️ for the Z.AI Hackathon to make travel safer, clearer, and smarter.</b>
+<b>Built with ❤️ for the UM Hackathon to make travel safer, clearer, and smarter.</b>
 </div>
