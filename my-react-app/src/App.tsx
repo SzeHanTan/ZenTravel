@@ -48,12 +48,13 @@ type ViewState =
 const API_KEY = import.meta.env.VITE_EXCHANGE_RATE_API_KEY;
 
 function App() {
-  const [view, setView] = useState<ViewState>('home');
+  const [view, setView] = useState<ViewState>('landing');
   const [selectedTicketId, setSelectedTicketId] = useState<string>(''); 
   const [user, setUser] = useState<any>(null);
   const [authLoaded, setAuthLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showFloatingChat, setShowFloatingChat] = useState(false);
+  const [pendingSearch, setPendingSearch] = useState<{origin: string, destination: string} | null>(null);
 
   // States
   const [globalCurrency, setGlobalCurrency] = useState(() => {
@@ -111,12 +112,22 @@ function App() {
 
   const handleSetView = (newView: ViewState | string, id: string = '') => {
     setView(newView as ViewState);
-    if (id) setSelectedTicketId(id);
+    if (id) {
+        setSelectedTicketId(id);
+    } else {
+        // If switching views via nav without an ID, we keep the existing ID 
+        // unless it's a fresh start. This allows 'view-ticket' etc to keep working.
+    }
   };
 
   async function handleGoogle() {
     try { await loginWithGoogle(); setView('home'); } catch (e) { console.error(e); }
   }
+
+  const handleAiRouting = (view: string, data: any) => {
+    setPendingSearch(data);
+    setView(view as ViewState);
+  };
 
   const authenticatedViews: ViewState[] = [
     'home', 'profile', 'chatbot', 'booking', 'notification', 
@@ -128,7 +139,6 @@ function App() {
   const pageLoader = <div className="loader-container" style={{ padding: '24px', textAlign: 'center' }}>Loading...</div>;
 
   const renderContent = () => {
-    // Collect all shared props into one object to fix the TS errors shown in your image
     const commonProps = {
       setView: handleSetView,
       globalCurrency,
@@ -137,7 +147,16 @@ function App() {
     };
 
     switch (view) {
-      case 'home': return <HomePage {...commonProps} />;
+      // 🤖 AI Integration: Pass setPendingSearch to HomePage
+      case 'home':
+        return (
+          <HomePage
+            {...commonProps}
+            setPendingSearch={setPendingSearch}
+            selectedId={selectedTicketId}
+          />
+        );
+      
       case 'profile': return (
         <ProfilePage 
           {...commonProps}
@@ -151,16 +170,33 @@ function App() {
         />
       );
       
-      case 'hotels': return <HotelsPage {...commonProps} />;
-      case 'flights': return <FlightsPage {...commonProps} />;
+      // 🚀 AMENDED: Added pendingSearch and clearSearch to HotelsPage
+      case 'hotels': return (
+        <HotelsPage 
+          {...commonProps} 
+          pendingSearch={pendingSearch} 
+          clearSearch={() => setPendingSearch(null)} 
+        />
+      );
+      
+      // 🤖 AI Integration: Pass pendingSearch and clear function to FlightsPage
+      case 'flights': return (
+        <FlightsPage 
+          {...commonProps} 
+          pendingSearch={pendingSearch} 
+          clearSearch={() => setPendingSearch(null)} 
+        />
+      );
+      
       case 'insurance': return <InsurancePage {...commonProps} />;
       case 'tripplanner': return <TripPlannerPage {...commonProps} />;
       case 'manual-planner': return <ManualPlannerPage {...commonProps} />;
       case 'carrental': return <CarRentalPage {...commonProps} />;
       
       case 'chatbot': return <ChatbotPage setView={handleSetView} />;
-      case 'booking': return <BookingPage {...commonProps} />; // Fixed the globalLang error here
-      case 'notification': return <NotificationPage setView={handleSetView} />;
+      case 'booking': return <BookingPage {...commonProps} />; 
+      case 'notification': return <NotificationPage {...commonProps} />;
+      
       case 'view-ticket': return <ViewTicket ticketId={selectedTicketId} setView={handleSetView} />;
       case 'refund': return <RefundPage bookingId={selectedTicketId} setView={handleSetView} />;
       case 'about': return <AboutUs setView={handleSetView} />;

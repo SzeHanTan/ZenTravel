@@ -1295,6 +1295,135 @@
   background: #7b2cbf;
 }
 
+/* ── Sample test documents panel ───────────────────────────────────── */
+.cb-sample-docs {
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: #f9f5ff;
+  border: 1.5px dashed #c4b0e8;
+  border-radius: 14px;
+  text-align: left;
+  width: 100%;
+  max-width: 560px;
+}
+
+.cb-sample-docs-heading {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #5e3ea1;
+  margin: 0 0 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cb-sample-docs-sub {
+  font-size: 0.75rem;
+  color: #8a7aaa;
+  margin: 0 0 10px;
+}
+
+.cb-sample-docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 7px;
+}
+
+.cb-sample-doc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1.5px solid #e0d4f7;
+  background: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+
+.cb-sample-doc:hover {
+  background: #f0e6ff;
+  border-color: #9b59e0;
+  transform: translateY(-1px);
+}
+
+.cb-sample-doc--text {
+  border-color: #d4e4f7;
+  background: #f5f9ff;
+}
+
+.cb-sample-doc--text:hover {
+  background: #e6f0ff;
+  border-color: #5b99e0;
+}
+
+.cb-sample-doc-icon {
+  font-size: 1rem;
+}
+
+.cb-sample-doc-label {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #3d2870;
+  line-height: 1.2;
+}
+
+.cb-sample-doc-tag {
+  font-size: 0.67rem;
+  color: #8a7aaa;
+}
+
+/* ── Upload button ──────────────────────────────────────────────────── */
+.cb-upload-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1.5px dashed #c4b0e8;
+  background: #faf7ff;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.18s, border-color 0.18s;
+}
+
+.cb-upload-btn:hover:not(:disabled) {
+  background: #f0e6ff;
+  border-color: #7b2cbf;
+}
+
+.cb-upload-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Image preview in chat bubble ───────────────────────────────────── */
+.cb-img-preview-wrap {
+  margin-bottom: 6px;
+}
+
+.cb-img-preview {
+  max-width: 220px;
+  max-height: 160px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.4);
+  display: block;
+}
+
+/* Pulse animation for "extracting" AI message */
+.cb-extracting {
+  opacity: 0.75;
+  animation: cb-extract-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes cb-extract-pulse {
+  0%, 100% { opacity: 0.75; }
+  50%       { opacity: 1; }
+}
+
 /* ── Responsive ────────────────────────────────────────────────────── */
 @media (max-width: 520px) {
   .cb-topbar {
