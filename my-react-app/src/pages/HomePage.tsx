@@ -35,7 +35,6 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency }) => {
   const currencySymbol = globalCurrency.code.split(' | ')[0];
   const currencyCode = globalCurrency.code.split(' | ')[1];
 
-  // Fetch exchange rates from API
   useEffect(() => {
     fetch(`https://open.er-api.com/v6/latest/MYR`)
       .then(res => res.json())
@@ -47,7 +46,6 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency }) => {
       .catch(err => console.error("Exchange API error:", err));
   }, []);
 
-  // Calculation logic for converted price
   const baseInsurancePrice = 65; 
   const convertedInsurancePrice = (baseInsurancePrice * (rates[currencyCode] || 1)).toFixed(2);
 
@@ -102,29 +100,29 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency }) => {
   return (
     <div className="home-page fade-in">
       <header className="home-header">ZenTravel</header>
-     
+      
       <main className="home-content">
         <div className="category-grid">
           <div className="cat-box red" onClick={() => setView('hotels')}>
               <span className="cat-label">HOTELS</span>
               <div className="cat-img-wrapper"><img src={hotelsImg} alt="Hotels" className="cat-img-fit" /></div>
           </div>
-         
+          
           <div className="cat-box orange" onClick={() => setView('flights')}>
               <span className="cat-label">FLIGHTS</span>
               <div className="cat-img-wrapper"><img src={flightsImg} alt="Flights" className="cat-img-fit" /></div>
           </div>
-         
+          
           <div className="cat-box yellow" onClick={() => setView('insurance')}>
               <span className="cat-label">INSURANCE</span>
               <div className="cat-img-wrapper"><img src={insuranceImg} alt="Insurance" className="cat-img-fit" /></div>
           </div>
-         
+          
           <div className="cat-box green" onClick={() => setView('tripplanner')}>
               <span className="cat-label">TRIP PLANNER</span>
               <div className="cat-img-wrapper"><img src={tripPlannerImg} alt="Trip Planner" className="cat-img-fit" /></div>
           </div>
-         
+          
           <div className="cat-box blue" onClick={() => setView('carrental')}>
               <span className="cat-label">CAR RENTAL</span>
               <div className="cat-img-wrapper"><img src={carRentalImg} alt="Car Rental" className="cat-img-fit" /></div>
@@ -144,7 +142,7 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency }) => {
               <Search size={22} color="#7b2cbf" />
             </button>
           </form>
-         
+          
           <div className="search-history-row">
             {history.length > 0 && <span className="history-label">Recent:</span>}
             {history.map((item, index) => (
