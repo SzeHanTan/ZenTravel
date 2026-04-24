@@ -11,6 +11,13 @@ export const BookingPage = ({ setView, globalLang }: { setView: (view: any, id?:
   const [bookings, setBookings] = useState<any[]>([]);
   const t = translations[globalLang || 'en']; 
 
+  const getTransportTitle = (item: any) => {
+    if (item.transportMode === 'pickup') return 'Airport Pick-up';
+    if (item.transportMode === 'dropoff') return 'Airport Drop-off';
+    if (item.transportMode === 'rental') return 'Car Rental';
+    return item.name || item.hotelName || 'Transport';
+  };
+
   // Firebase Timestamp 安全转换逻辑
   const safeDate = (val: any) => {
     if (!val) return "";
@@ -108,7 +115,9 @@ export const BookingPage = ({ setView, globalLang }: { setView: (view: any, id?:
                       <img src={item.imageUrl || mascotImg} alt="item" className="zen-item-thumb" />
                       <div className="zen-item-details">
                         <div className="zen-detail-header">
-                          <h4 className="zen-item-name">{item.name || item.hotelName}</h4>
+                          <h4 className="zen-item-name">
+                            {isTransport ? getTransportTitle(item) : (item.name || item.hotelName)}
+                          </h4>
                           <span className="zen-booking-no">{item.bookingNum || item.bookNum}</span>
                         </div>
                         <p className="zen-date-normal">{safeDate(item.date)}</p>
