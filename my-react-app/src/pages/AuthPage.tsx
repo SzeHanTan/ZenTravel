@@ -4,13 +4,14 @@ interface AuthProps {
   onGoogle: () => void;
   onEmailClick: () => void;
   onRegister: (e: any) => void;
-  view: 'landing' | 'auth' | 'register' | 'home' | 'profile';
+  onLogin: (e: any) => void;
+  view: 'landing' | 'auth' | 'register' | 'login' | 'home' | 'profile';
   setView: (v: any) => void;
   setEmail: (e: string) => void;
   setPassword: (p: string) => void;
 }
 
-export const AuthPage = ({ onGoogle, onEmailClick, onRegister, view, setView, setEmail, setPassword }: AuthProps) => {
+export const AuthPage = ({ onGoogle, onEmailClick, onRegister, onLogin, view, setView, setEmail, setPassword }: AuthProps) => {
   return (
     <div className="landing-container fade-in" style={{
     display: 'flex',
@@ -45,25 +46,45 @@ export const AuthPage = ({ onGoogle, onEmailClick, onRegister, view, setView, se
           <img src={logo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </div>
         
-        {view === 'auth' ? (
+        {view === 'auth' && (
           <div className="auth-button-group" style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '300px' }}>
-            {/* 保留你原来的按钮 ClassName，确保 CSS 依然生效 */}
-            <button className="auth-btn google-btn" onClick={onGoogle} style={{ padding: '14px', borderRadius: '50px', cursor: 'pointer' }}>
-              <span className="btn-icon">G</span> Continue with Google
+            <button className="auth-btn google-btn" onClick={onGoogle} style={{ 
+              padding: '14px', 
+              borderRadius: '50px', 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              backgroundColor: 'white',
+              border: 'none',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              color: '#3c4043',
+              fontSize: '16px',
+              fontWeight: '500',
+              width: '100%'
+            }}>
+              <img src="https://www.gstatic.com/images/branding/product/1x/googleg_48dp.png" alt="Google" style={{ width: '20px', height: '20px' }} />
+              Continue with Google
             </button>
-            <button className="auth-btn email-btn" onClick={onEmailClick} style={{ padding: '14px', borderRadius: '50px', cursor: 'pointer', backgroundColor: '#333', color: 'white' }}>
-              Continue with Email
+            <button className="auth-btn email-btn" onClick={() => setView('login')} style={{ padding: '14px', borderRadius: '50px', cursor: 'pointer', backgroundColor: '#333', color: 'white', border: 'none' }}>
+              Sign In with Email
             </button>
+            <p style={{ color: 'white', textAlign: 'center', marginTop: '10px' }}>
+              Don't have an account? <span onClick={() => setView('register')} style={{ textDecoration: 'underline', cursor: 'pointer' }}>Sign Up</span>
+            </p>
           </div>
-        ) : (
+        )}
+
+        {view === 'login' && (
           <div style={{ width: '300px' }}>
-            <h2 className="register-title" style={{ color: 'white', textAlign: 'center', marginBottom: '20px' }}>Create Account</h2>
-            <form className="register-form" onSubmit={onRegister} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <h2 className="register-title" style={{ color: 'white', textAlign: 'center', marginBottom: '20px' }}>Sign In</h2>
+            <form className="register-form" onSubmit={onLogin} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <input 
                 type="email" 
                 placeholder="Email" 
                 className="auth-input" 
-                style={{ padding: '12px', borderRadius: '8px' }}
+                style={{ padding: '12px', borderRadius: '8px', border: 'none' }}
                 onChange={(e) => setEmail(e.target.value)} 
                 required 
               />
@@ -71,16 +92,56 @@ export const AuthPage = ({ onGoogle, onEmailClick, onRegister, view, setView, se
                 type="password" 
                 placeholder="Password" 
                 className="auth-input" 
-                style={{ padding: '12px', borderRadius: '8px' }}
+                style={{ padding: '12px', borderRadius: '8px', border: 'none' }}
                 onChange={(e) => setPassword(e.target.value)} 
                 required 
               />
-              <button type="submit" className="auth-btn email-btn" style={{ padding: '14px', borderRadius: '50px', backgroundColor: '#333', color: 'white', cursor: 'pointer', marginTop: '10px' }}>
+              <button type="submit" className="auth-btn email-btn" style={{ padding: '14px', borderRadius: '50px', backgroundColor: '#333', color: 'white', cursor: 'pointer', marginTop: '10px', border: 'none' }}>
+                Sign In
+              </button>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '15px' }}>
+                <p className="back-link" onClick={() => setView('auth')} style={{ color: 'white', cursor: 'pointer', textDecoration: 'underline' }}>
+                  ← Back
+                </p>
+                <p className="back-link" onClick={() => setView('register')} style={{ color: 'white', cursor: 'pointer', textDecoration: 'underline' }}>
+                  Create Account
+                </p>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {view === 'register' && (
+          <div style={{ width: '300px' }}>
+            <h2 className="register-title" style={{ color: 'white', textAlign: 'center', marginBottom: '20px' }}>Create Account</h2>
+            <form className="register-form" onSubmit={onRegister} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <input 
+                type="email" 
+                placeholder="Email" 
+                className="auth-input" 
+                style={{ padding: '12px', borderRadius: '8px', border: 'none' }}
+                onChange={(e) => setEmail(e.target.value)} 
+                required 
+              />
+              <input 
+                type="password" 
+                placeholder="Password" 
+                className="auth-input" 
+                style={{ padding: '12px', borderRadius: '8px', border: 'none' }}
+                onChange={(e) => setPassword(e.target.value)} 
+                required 
+              />
+              <button type="submit" className="auth-btn email-btn" style={{ padding: '14px', borderRadius: '50px', backgroundColor: '#333', color: 'white', cursor: 'pointer', marginTop: '10px', border: 'none' }}>
                 Sign Up
               </button>
-              <p className="back-link" onClick={() => setView('auth')} style={{ color: 'white', textAlign: 'center', cursor: 'pointer', marginTop: '15px', textDecoration: 'underline' }}>
-                ← Back
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '15px' }}>
+                <p className="back-link" onClick={() => setView('auth')} style={{ color: 'white', cursor: 'pointer', textDecoration: 'underline' }}>
+                  ← Back
+                </p>
+                <p className="back-link" onClick={() => setView('login')} style={{ color: 'white', cursor: 'pointer', textDecoration: 'underline' }}>
+                  Sign In
+                </p>
+              </div>
             </form>
           </div>
         )}
