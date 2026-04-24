@@ -1,6 +1,6 @@
 <!-- App Logo -->
 <div align="center">
-  <img src="assets/zentravel_logo.png" alt="MediSafe Logo" width="120"/>
+  <img src="my-react-app/src/assets/zentravel_logo.png" alt="ZenTravel Logo" width="120"/>
 </div>
 
 <div align="center">
@@ -161,6 +161,8 @@ Deterministic mock travel APIs (mockTravelAPI.ts) simulate real-world scenarios,
 **Real-time Disruption Push:** Integrate Firebase Cloud Messaging (FCM) for instant flight status alerts.
 
 **Regulatory Logic:** Expand mock rules to include formal EU261 and local Malaysian consumer protection logic.
+
+---
 
 <div align="center">
 <b>Built with ❤️ for the Z.AI Hackathon to make travel safer, clearer, and smarter.</b>
