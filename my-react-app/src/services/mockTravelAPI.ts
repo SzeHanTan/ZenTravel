@@ -58,9 +58,6 @@ const CITY_TO_IATA: Record<string, string> = {
   'kuala lumpur': 'KUL', 'kl': 'KUL', 'klia': 'KUL', 'kul': 'KUL',
   'mly': 'KUL', 'malaysia': 'KUL', 'msia': 'KUL', // 🚀 Added "mly" mapping
   'penang': 'PEN', 'pen': 'PEN',
-  'bali': 'DPS', 'denpasar': 'DPS', 'dps': 'DPS',
-  'london': 'LHR', 'lhr': 'LHR', 'heathrow': 'LHR',
-  'tokyo': 'NRT', 'narita': 'NRT', 'nrt': 'NRT',
   // Japan
   'tokyo': 'NRT', 'narita': 'NRT', 'nrt': 'NRT',
   'haneda': 'HND', 'hnd': 'HND',
@@ -111,8 +108,15 @@ const CITY_TO_IATA: Record<string, string> = {
 
 export function toIATA(city: string): string {
   const normalized = city.toLowerCase().trim();
-  // Check the dictionary first, then fallback to first 3 letters
-  return CITY_TO_IATA[normalized] ?? city.toUpperCase().slice(0, 3);
+  
+  // Natural Language Mapping
+  const mapping: Record<string, string> = {
+    'kl': 'KUL', 'kuala lumpur': 'KUL', 'mly': 'KUL',
+    'london': 'LHR', 'heathrow': 'LHR',
+    'bali': 'DPS', 'tokyo': 'NRT', 'singapore': 'SIN'
+  };
+
+  return mapping[normalized] || city.toUpperCase().slice(0, 3);
 }
 
 // ─── Route → airline + flight data ───────────────────────────────────────────

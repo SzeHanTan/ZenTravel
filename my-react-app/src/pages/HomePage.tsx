@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Sparkles } from 'lucide-react';
 import { db, auth } from '../services/firebase';
 import {
   collection,
@@ -24,36 +24,55 @@ import tripPlannerImg from '../assets/TripPlanner_pic.png';
 interface HomeProps {
   setView: (v: string) => void;
   globalCurrency: { name: string; code: string };
+  setPendingSearch: (data: { origin: string, destination: string } | null) => void;
 }
 
-export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency }) => {
+// 🤖 1. Advanced NLP: Extracts locations from "City to City" OR "Hotels in City"
+const extractLocationIntelligence = (term: string) => {
+  const lowerTerm = term.toLowerCase();
+  
+  // Pattern A: "KL to London" (Route Extraction)
+  const routePattern = /(?:from\s+)?([\w\s]+)\s+to\s+([\w\s]+)/i;
+  const routeMatch = term.match(routePattern);
+  if (routeMatch) {
+    return { origin: routeMatch[1].trim(), destination: routeMatch[2].trim() };
+  }
+
+  // Pattern B: "Hotels in London" (Single Location Extraction)
+  const locationPattern = /(?:in|at|near)\s+([\w\s]+)/i;
+  const locationMatch = term.match(locationPattern);
+  if (locationMatch) {
+    return { origin: "", destination: locationMatch[1].trim() };
+  }
+
+  return null;
+};
+
+export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency, setPendingSearch }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [rates, setRates] = useState<any>({ MYR: 1 });
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
 
   const currencySymbol = globalCurrency.code.split(' | ')[0];
   const currencyCode = globalCurrency.code.split(' | ')[1];
 
-  // Fetch exchange rates from API
   useEffect(() => {
     fetch(`https://open.er-api.com/v6/latest/MYR`)
       .then(res => res.json())
       .then(data => {
-        if (data && data.rates) {
-          setRates(data.rates);
-        }
+        if (data && data.rates) setRates(data.rates);
       })
       .catch(err => console.error("Exchange API error:", err));
   }, []);
 
-  // Calculation logic for converted price
   const baseInsurancePrice = 65; 
   const convertedInsurancePrice = (baseInsurancePrice * (rates[currencyCode] || 1)).toFixed(2);
 
   const recommendation = {
     title: "AI RECOMMENDATION",
-    message: `Your flight to Tokyo (ZT-402) is confirmed! Since you're traveling soon, we recommend booking a hotel in the Shinjuku area and getting travel insurance for peace of mind. We've found 3 hotels matching your style and a premium insurance plan starting at ${currencySymbol} ${convertedInsurancePrice}.`,
+    message: `Your flight to Tokyo (ZT-402) is confirmed! We recommend booking a hotel in Shinjuku and getting travel insurance starting at ${currencySymbol} ${convertedInsurancePrice}.`,
     isEmergency: false
   };
 
@@ -61,94 +80,116 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency }) => {
     const user = auth.currentUser;
     if (!user) return;
     try {
-      const q = query(
-        collection(db, "search_history"),
-        where("userId", "==", user.uid),
-        orderBy("timestamp", "desc"),
-        limit(3)
-      );
+      const q = query(collection(db, "search_history"), where("userId", "==", user.uid), orderBy("timestamp", "desc"), limit(3));
       const querySnapshot = await getDocs(q);
       const docs = querySnapshot.docs.map(doc => doc.data().term);
       setHistory([...new Set(docs)]);
-    } catch (error: any) {
-      console.error("Error fetching history:", error);
-    }
+    } catch (error) { console.error("History fetch error:", error); }
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) fetchHistory();
-    });
+    const unsubscribe = auth.onAuthStateChanged((user) => { if (user) fetchHistory(); });
     return () => unsubscribe();
   }, []);
 
+  // 🤖 2. Intent Detection
+  const detectIntent = (term: string) => {
+    const lower = term.toLowerCase();
+    if (lower.includes("hotel") || lower.includes("stay") || lower.includes("room") || lower.includes("inn")) return 'hotels';
+    if (lower.includes("flight") || lower.includes("ticket") || lower.includes("fly") || lower.includes("plane")) return 'flights';
+    if (lower.includes("car") || lower.includes("rent") || lower.includes("drive")) return 'carrental';
+    if (lower.includes("insurance") || lower.includes("protect")) return 'insurance';
+    if (lower.includes("plan") || lower.includes("itinerary")) return 'tripplanner';
+    return null;
+  };
+
+  // 🛠️ 3. Main Search Logic (Direct Execution)
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const term = searchTerm.trim();
     if (!term || !auth.currentUser) return;
+
+    setIsAiProcessing(true);
+
     try {
       await addDoc(collection(db, "search_history"), {
         userId: auth.currentUser.uid,
         term: term,
         timestamp: serverTimestamp()
       });
-      setSearchTerm("");
-      await fetchHistory();
+
+      const intent = detectIntent(term);
+      const data = extractLocationIntelligence(term);
+
+      if (intent) {
+        // Prepare the data for the target page (Hotels or Flights)
+        if (data) {
+          setPendingSearch(data); 
+        }
+
+        setTimeout(() => {
+          setIsAiProcessing(false);
+          setSearchTerm("");
+          setView(intent); // 🚀 Automatic Redirect
+        }, 800);
+      } else {
+        setIsAiProcessing(false);
+        setSearchTerm("");
+        await fetchHistory();
+      }
     } catch (err) {
-      console.error("Error saving search:", err);
+      console.error("Search Error:", err);
+      setIsAiProcessing(false);
     }
   };
 
   return (
     <div className="home-page fade-in">
       <header className="home-header">ZenTravel</header>
-     
+      
       <main className="home-content">
         <div className="category-grid">
           <div className="cat-box red" onClick={() => setView('hotels')}>
-              <span className="cat-label">HOTELS</span>
-              <div className="cat-img-wrapper"><img src={hotelsImg} alt="Hotels" className="cat-img-fit" /></div>
+            <span className="cat-label">HOTELS</span>
+            <div className="cat-img-wrapper"><img src={hotelsImg} alt="Hotels" className="cat-img-fit" /></div>
           </div>
-         
           <div className="cat-box orange" onClick={() => setView('flights')}>
-              <span className="cat-label">FLIGHTS</span>
-              <div className="cat-img-wrapper"><img src={flightsImg} alt="Flights" className="cat-img-fit" /></div>
+            <span className="cat-label">FLIGHTS</span>
+            <div className="cat-img-wrapper"><img src={flightsImg} alt="Flights" className="cat-img-fit" /></div>
           </div>
-         
           <div className="cat-box yellow" onClick={() => setView('insurance')}>
-              <span className="cat-label">INSURANCE</span>
-              <div className="cat-img-wrapper"><img src={insuranceImg} alt="Insurance" className="cat-img-fit" /></div>
+            <span className="cat-label">INSURANCE</span>
+            <div className="cat-img-wrapper"><img src={insuranceImg} alt="Insurance" className="cat-img-fit" /></div>
           </div>
-         
           <div className="cat-box green" onClick={() => setView('tripplanner')}>
-              <span className="cat-label">TRIP PLANNER</span>
-              <div className="cat-img-wrapper"><img src={tripPlannerImg} alt="Trip Planner" className="cat-img-fit" /></div>
+            <span className="cat-label">TRIP PLANNER</span>
+            <div className="cat-img-wrapper"><img src={tripPlannerImg} alt="Trip Planner" className="cat-img-fit" /></div>
           </div>
-         
           <div className="cat-box blue" onClick={() => setView('carrental')}>
-              <span className="cat-label">CAR RENTAL</span>
-              <div className="cat-img-wrapper"><img src={carRentalImg} alt="Car Rental" className="cat-img-fit" /></div>
+            <span className="cat-label">CAR RENTAL</span>
+            <div className="cat-img-wrapper"><img src={carRentalImg} alt="Car Rental" className="cat-img-fit" /></div>
           </div>
         </div>
 
         <div className="search-section">
-          <form className="search-bar-container" onSubmit={handleSearch}>
+          <form className={`search-bar-container ${isAiProcessing ? 'ai-glow' : ''}`} onSubmit={handleSearch}>
             <input
               type="text"
-              placeholder="Search destinations..."
+              placeholder={isAiProcessing ? "Analyzing with Z-AI..." : "e.g. 'hotels in London' or 'KL to Tokyo'"}
               className="main-search-input"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              disabled={isAiProcessing}
             />
             <button type="submit" className="search-submit-btn">
-              <Search size={22} color="#7b2cbf" />
+              {isAiProcessing ? <Sparkles size={22} className="animate-pulse" color="#7b2cbf" /> : <Search size={22} color="#7b2cbf" />}
             </button>
           </form>
-         
+          
           <div className="search-history-row">
             {history.length > 0 && <span className="history-label">Recent:</span>}
             {history.map((item, index) => (
-              <div key={index} className="history-pill">{item}</div>
+              <div key={index} className="history-pill" onClick={() => setSearchTerm(item)}>{item}</div>
             ))}
           </div>
         </div>
@@ -162,17 +203,14 @@ export const HomePage: React.FC<HomeProps> = ({ setView, globalCurrency }) => {
         {showModal && (
           <div className="modal-overlay" onClick={() => setShowModal(false)}>
             <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-              <button className="close-modal" onClick={() => setShowModal(false)}>
-                <X size={20} />
-              </button>
+              <button className="close-modal" onClick={() => setShowModal(false)}><X size={20} /></button>
               <h3>{recommendation.title}</h3>
               <p>{recommendation.message}</p>
-              <button className="modal-action-btn">Book Now</button>
+              <button className="modal-action-btn" onClick={() => { setShowModal(false); setView('hotels'); }}>Book Now</button>
             </div>
           </div>
         )}
       </main>
-
     </div>
   );
 };

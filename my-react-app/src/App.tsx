@@ -54,6 +54,7 @@ function App() {
   const [authLoaded, setAuthLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showFloatingChat, setShowFloatingChat] = useState(false);
+  const [pendingSearch, setPendingSearch] = useState<{origin: string, destination: string} | null>(null);
 
   // States
   const [globalCurrency, setGlobalCurrency] = useState(() => {
@@ -118,6 +119,11 @@ function App() {
     try { await loginWithGoogle(); setView('home'); } catch (e) { console.error(e); }
   }
 
+  const handleAiRouting = (view: string, data: any) => {
+    setPendingSearch(data);
+    setView(view as ViewState);
+  };
+
   const authenticatedViews: ViewState[] = [
     'home', 'profile', 'chatbot', 'booking', 'notification', 
     'view-ticket', 'refund', 'about', 'help', 
@@ -128,7 +134,6 @@ function App() {
   const pageLoader = <div className="loader-container" style={{ padding: '24px', textAlign: 'center' }}>Loading...</div>;
 
   const renderContent = () => {
-    // Collect all shared props into one object to fix the TS errors shown in your image
     const commonProps = {
       setView: handleSetView,
       globalCurrency,
@@ -137,7 +142,9 @@ function App() {
     };
 
     switch (view) {
-      case 'home': return <HomePage {...commonProps} />;
+      // 🤖 AI Integration: Pass setPendingSearch to HomePage
+      case 'home': return <HomePage {...commonProps} setPendingSearch={setPendingSearch} />;
+      
       case 'profile': return (
         <ProfilePage 
           {...commonProps}
@@ -151,15 +158,31 @@ function App() {
         />
       );
       
-      case 'hotels': return <HotelsPage {...commonProps} />;
-      case 'flights': return <FlightsPage {...commonProps} />;
+      // 🚀 AMENDED: Added pendingSearch and clearSearch to HotelsPage
+      case 'hotels': return (
+        <HotelsPage 
+          {...commonProps} 
+          pendingSearch={pendingSearch} 
+          clearSearch={() => setPendingSearch(null)} 
+        />
+      );
+      
+      // 🤖 AI Integration: Pass pendingSearch and clear function to FlightsPage
+      case 'flights': return (
+        <FlightsPage 
+          {...commonProps} 
+          pendingSearch={pendingSearch} 
+          clearSearch={() => setPendingSearch(null)} 
+        />
+      );
+      
       case 'insurance': return <InsurancePage {...commonProps} />;
       case 'tripplanner': return <TripPlannerPage {...commonProps} />;
       case 'manual-planner': return <ManualPlannerPage {...commonProps} />;
       case 'carrental': return <CarRentalPage {...commonProps} />;
       
       case 'chatbot': return <ChatbotPage setView={handleSetView} />;
-      case 'booking': return <BookingPage {...commonProps} />; // Fixed the globalLang error here
+      case 'booking': return <BookingPage {...commonProps} />; 
       case 'notification': return <NotificationPage setView={handleSetView} />;
       case 'view-ticket': return <ViewTicket ticketId={selectedTicketId} setView={handleSetView} />;
       case 'refund': return <RefundPage bookingId={selectedTicketId} setView={handleSetView} />;

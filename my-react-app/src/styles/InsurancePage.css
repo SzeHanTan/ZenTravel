@@ -1,106 +1,185 @@
+/* 🚀 Main Background Gradient */
+.insurance-page-gradient {
+    min-height: 100vh;
+}
+
+.home-header {
+    display: flex;
+    align-items: center;
+    gap: 15px; 
+}
+
 .insurance-container {
     padding: 20px;
-    padding-bottom: 100px;
-    text-align: left;
+    padding-bottom: 300px;
+    background: linear-gradient(
+    135deg, 
+    #fbc2eb 0%, 
+    #e2d1f9 30%, 
+    #d1d8ff 70%, 
+    #97e8ff 100%
+  );
 }
 
-.insurance-card {
-    background: rgba(234, 221, 255, 0.8);
-    border: 1.5px solid #7b2cbf;
-    border-radius: 25px;
-    padding: 20px;
+.page-title {
+    color: white;
+    font-weight: 800;
+    margin-bottom: 25px;
+}
+
+/* 🚀 Purple Card Container */
+.insurance-purple-card {
+    background: #e9d5ff; /* Soft Purple from image */
+    border-radius: 24px;
+    padding: 24px;
     margin-bottom: 20px;
     position: relative;
-    box-shadow: 0 4px 15px rgba(123, 44, 191, 0.1);
+    color: #4b0082;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
-.insurance-card h3 {
-    font-size: 1.1rem;
+.insurance-purple-card h3 {
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.plan-summary {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    margin-bottom: 12px;
+}
+
+.mini-benefits {
+    list-style: none;
+    padding: 0;
+}
+
+.mini-benefits li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+}
+
+/* 🚀 Bottom Right Button Position */
+.card-action-bottom-right {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+.price-pill-btn {
+    background: #7b2cbf;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.from-text { font-size: 0.6rem; text-transform: uppercase; font-weight: 700; }
+.actual-price { font-size: 1.1rem; font-weight: 900; }
+
+/* Modal & Trip List */
+.luxe-modal {
+    background: white;
+    color: #333;
+    border-radius: 28px;
+    padding: 25px !important;
+}
+
+.trip-option {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: #f3f0ff;
+    border: 2px solid transparent;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.trip-option.active {
+    border-color: #7b2cbf;
+    background: #e9d5ff;
+}
+
+.no-trips-msg {
+    text-align: center;
+    padding: 30px;
+    color: #888;
+}
+
+.confirm-purchase-btn {
+    width: 100%;
+    background: #7b2cbf;
+    color: white;
+    border: none;
+    padding: 16px;
+    border-radius: 18px;
+    font-weight: 800;
+    font-size: 1rem;
+    margin-top: 20px;
+}
+
+/* 🚀 Protected Section Styling */
+.protected-section {
+    margin-top: 40px;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+}
+
+.section-subtitle {
+    font-size: 1rem;
     color: #4b0082;
+    font-weight: 800;
     margin-bottom: 15px;
 }
 
-.insurance-card ul {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 20px 0;
-}
-
-.insurance-card li {
-    font-size: 0.95rem;
-    color: #000; /* Black text as requested */
-    margin-bottom: 8px;
-    line-height: 1.4;
-}
-
-.price-tag {
-    position: absolute;
-    bottom: 15px;
-    right: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #4b0082;
-}
-
-/* Yellow Button Row */
-.action-row {
+.protected-item {
     display: flex;
-    gap: 15px;
-    margin-top: 10px;
-}
-
-.btn-yellow {
-    flex: 1;
-    background: #fff9c4;
-    border: 1.5px solid #fbc02d;
-    padding: 20px 10px;
-    border-radius: 20px;
-    font-weight: 600;
-    color: #333;
-    cursor: pointer;
-    text-align: center;
-    box-shadow: 0 4px 10px rgba(251, 192, 45, 0.2);
-}
-
-.declaration-text {
-    margin-top: 25px;
-    font-size: 0.9rem;
-    color: #666;
-    font-style: italic;
-}
-
-/* Modal List Styling */
-.modal-list {
-    margin-top: 20px;
-    text-align: left;
-}
-
-.modal-item {
-    background: white;
+    align-items: center;
+    gap: 12px;
     padding: 15px;
+    background: #f8f9fa;
     border-radius: 15px;
-    margin-bottom: 12px;
-    border: 1px solid #eee;
+    margin-bottom: 10px;
+    border: 1px solid #f0f0f0;
 }
 
-.modal-item h4 {
-    margin: 0 0 5px 0;
-    color: #7b2cbf;
+.protected-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
-.modal-item p {
-    margin: 0;
-    font-size: 0.85rem;
-    color: #444;
+.protected-info .dest {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #333;
 }
 
-.status-badge {
-    display: inline-block;
-    margin-top: 8px;
-    padding: 2px 8px;
-    border-radius: 5px;
+.protected-info .date {
     font-size: 0.75rem;
-    font-weight: bold;
+    color: #666;
+}
+
+.status-pill {
     background: #e8f5e9;
     color: #2e7d32;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
 }
