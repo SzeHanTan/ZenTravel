@@ -1,0 +1,1 @@
+var e=`/assets/MASCOT-DQlcL7Vr.png`;export{e as t};
