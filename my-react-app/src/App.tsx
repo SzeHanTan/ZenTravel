@@ -111,7 +111,12 @@ function App() {
 
   const handleSetView = (newView: ViewState | string, id: string = '') => {
     setView(newView as ViewState);
-    if (id) setSelectedTicketId(id);
+    if (id) {
+        setSelectedTicketId(id);
+    } else {
+        // If switching views via nav without an ID, we keep the existing ID 
+        // unless it's a fresh start. This allows 'view-ticket' etc to keep working.
+    }
   };
 
   async function handleGoogle() {
@@ -128,7 +133,6 @@ function App() {
   const pageLoader = <div className="loader-container" style={{ padding: '24px', textAlign: 'center' }}>Loading...</div>;
 
   const renderContent = () => {
-    // Collect all shared props into one object to fix the TS errors shown in your image
     const commonProps = {
       setView: handleSetView,
       globalCurrency,
@@ -137,7 +141,9 @@ function App() {
     };
 
     switch (view) {
-      case 'home': return <HomePage {...commonProps} />;
+      // Pass selectedTicketId as selectedId to HomePage
+      case 'home': return <HomePage {...commonProps} selectedId={selectedTicketId} />;
+      
       case 'profile': return (
         <ProfilePage 
           {...commonProps}
@@ -159,8 +165,9 @@ function App() {
       case 'carrental': return <CarRentalPage {...commonProps} />;
       
       case 'chatbot': return <ChatbotPage setView={handleSetView} />;
-      case 'booking': return <BookingPage {...commonProps} />; // Fixed the globalLang error here
-      case 'notification': return <NotificationPage setView={handleSetView} />;
+      case 'booking': return <BookingPage {...commonProps} />; 
+      case 'notification': return <NotificationPage {...commonProps} />;
+      
       case 'view-ticket': return <ViewTicket ticketId={selectedTicketId} setView={handleSetView} />;
       case 'refund': return <RefundPage bookingId={selectedTicketId} setView={handleSetView} />;
       case 'about': return <AboutUs setView={handleSetView} />;

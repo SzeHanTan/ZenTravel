@@ -11,7 +11,7 @@
   background-color: #7b2cbf;
   color: white;
   font-size: 2rem;
-  padding: 20px 25px;
+  padding: 30px 25px 20px;
   text-align: left;
   font-weight: bold;
 }
@@ -20,75 +20,132 @@
   padding: 20px;
 }
 
+/* 居中 Empty State */
+.notif-empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 100px;
+  text-align: center;
+}
+
+.notif-mascot-img {
+  width: 130px;
+  height: auto;
+  margin-bottom: 20px;
+  opacity: 0.9;
+}
+
+.notif-empty-text {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.notif-sub-text {
+  font-size: 0.9rem;
+  color: #999;
+  margin-top: 8px;
+}
+
 .notifications-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
 }
 
 .notification-card {
   background-color: white;
-  border: 2px solid #7b2cbf;
   border-radius: 20px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  border: 1.5px solid #eee;
 }
 
-.notification-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(123, 44, 191, 0.2);
-}
+.border-cancelled { border: 2px solid #ff4d4d; }
+.border-success { border: 2px solid #28C76F; }
 
 .notification-header-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 12px;
-  gap: 15px;
+  margin-bottom: 10px;
 }
 
 .notification-title {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: bold;
-  color: #333;
-  flex: 1;
 }
 
 .notification-date {
-  font-size: 0.9rem;
-  color: #333;
-  white-space: nowrap;
-  font-weight: normal;
+  font-size: 0.85rem;
+  color: #999;
 }
 
-.notification-message {
-  margin: 0;
-  font-size: 1rem;
-  color: #333;
-  line-height: 1.5;
+.ai-notice-box {
+  margin-top: 15px;
+  padding: 12px 15px;
+  background: #f3e8ff;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  border: 1.2px dashed #7b2cbf;
 }
 
-@media (max-width: 480px) {
-  .notification-header {
-    font-size: 1.8rem;
-    padding: 18px 20px;
-  }
-  
-  .notification-card {
-    padding: 18px;
-  }
-  
-  .notification-title {
-    font-size: 1.1rem;
-  }
-  
-  .notification-date {
-    font-size: 0.85rem;
-  }
-  
-  .notification-message {
-    font-size: 0.95rem;
-  }
+/* --- AI Analysis Modal --- */
+.analysis-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.analysis-card {
+  background: white;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 30px 30px 0 0;
+  padding: 35px 25px;
+  position: relative;
+  min-height: 450px;
+}
+
+.fade-in-up { animation: fadeInUp 0.4s ease-out; }
+@keyframes fadeInUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.analysis-header { display: flex; align-items: center; gap: 12px; margin-bottom: 25px; }
+.analysis-header h2 { margin: 0; color: #7b2cbf; font-size: 1.4rem; }
+
+.close-analysis {
+  position: absolute; top: 20px; right: 20px;
+  background: #f5f5f5; border: none; border-radius: 50%;
+  width: 35px; height: 35px; cursor: pointer;
+}
+
+.analyzing-state { text-align: center; padding: 60px 0; }
+.loading-bar { width: 220px; height: 6px; background: #eee; border-radius: 3px; margin: 20px auto; overflow: hidden; }
+.loading-progress { width: 100%; height: 100%; background: #7b2cbf; animation: progress 2.5s infinite linear; transform-origin: left; }
+@keyframes progress { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+
+.alt-hotel-item {
+  display: flex; align-items: center; gap: 15px;
+  padding: 15px; border: 1px solid #eee; border-radius: 16px;
+  margin-bottom: 12px; cursor: pointer;
+}
+
+.alt-info h4 { margin: 0; font-size: 1rem; }
+.alt-price { font-weight: bold; color: #7b2cbf; font-size: 0.95rem; }
+
+.chat-ai-btn {
+  width: 100%; background: #7b2cbf; color: white; border: none;
+  padding: 16px; border-radius: 16px; margin-top: 20px; font-weight: bold;
 }
