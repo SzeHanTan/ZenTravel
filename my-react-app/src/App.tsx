@@ -1,12 +1,14 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
-import { auth } from './services/firebase'; 
+import { auth, db } from './services/firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
-import { MessageCircle } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import mascotImg from './assets/MASCOT-removebg-preview.png';
+import { FloatingChatWidget } from './components/FloatingChatWidget';
 
 // Services
 import { loginWithGoogle } from './services/authService';
 
-// Pages (lazy-loaded to reduce initial bundle size)
+// Pages
 const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 const AuthPage = lazy(() => import('./pages/AuthPage').then((m) => ({ default: m.AuthPage })));
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
@@ -43,53 +45,77 @@ type ViewState =
   | 'hotels' | 'flights' | 'insurance' 
   | 'tripplanner' | 'carrental'| 'manual-planner';
 
+const API_KEY = import.meta.env.VITE_EXCHANGE_RATE_API_KEY;
+
 function App() {
   const [view, setView] = useState<ViewState>('landing');
   const [selectedTicketId, setSelectedTicketId] = useState<string>(''); 
   const [user, setUser] = useState<any>(null);
   const [authLoaded, setAuthLoaded] = useState(false);
-  const [loading, setLoading] = useState(true); 
+  const [loading, setLoading] = useState(true);
+  const [showFloatingChat, setShowFloatingChat] = useState(false);
 
-  const [globalCurrency, setGlobalCurrency] = useState({ name: 'Malaysian Ringgit', code: 'RM | MYR' });
+  // States
+  const [globalCurrency, setGlobalCurrency] = useState(() => {
+    const saved = localStorage.getItem('userCurrency');
+    return saved ? JSON.parse(saved) : { name: 'Malaysian Ringgit', code: 'RM | MYR' };
+  });
   const [cashbackBalance, setCashbackBalance] = useState(0.00);
+  const [exchangeRates, setExchangeRates] = useState<{ [key: string]: number }>({ MYR: 1 });
+  const [globalLang, setGlobalLang] = useState('en');
 
+  // 1. Fetch Exchange Rates
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const fetchRates = async () => {
+      try {
+        const res = await fetch(`https://v6.exchangerate-api.com/v6/${API_KEY}/latest/MYR`);
+        const data = await res.json();
+        if (data.result === "success") setExchangeRates(data.conversion_rates);
+      } catch (err) { console.error("Exchange API Error:", err); }
+    };
+    if (API_KEY) fetchRates();
+  }, []);
+
+  // 2. Auth & Firestore Sync
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            if (userData.currencyPreference) setGlobalCurrency(userData.currencyPreference);
+            if (userData.languagePreference) setGlobalLang(userData.languagePreference);
+            if (userData.cashbackBalance !== undefined) setCashbackBalance(userData.cashbackBalance);
+          }
+        } catch (e) { console.error("Firestore sync error:", e); }
+      }
       setAuthLoaded(true);
       setLoading(false); 
     });
     return () => unsubscribe();
   }, []);
 
+  // 3. Landing Timer
   useEffect(() => {
     if (view === 'landing' && !loading) {
       const timer = setTimeout(() => {
         if (authLoaded) {
-          if (user) setView('home'); 
-          else setView('auth'); 
+          user ? setView('home') : setView('auth'); 
         }
       }, 3000);
       return () => clearTimeout(timer);
     }
   }, [view, user, authLoaded, loading]);
 
-  // FIX: Change 'any' to specific types and make the second parameter truly optional
-  // This allows teammate's components to call it with just one string
   const handleSetView = (newView: ViewState | string, id: string = '') => {
     setView(newView as ViewState);
-    if (id) {
-        setSelectedTicketId(id);
-    }
+    if (id) setSelectedTicketId(id);
   };
 
   async function handleGoogle() {
-    try { 
-      await loginWithGoogle(); 
-      setView('home'); 
-    } catch (e) { 
-      console.error(e); 
-    }
+    try { await loginWithGoogle(); setView('home'); } catch (e) { console.error(e); }
   }
 
   const authenticatedViews: ViewState[] = [
@@ -99,38 +125,48 @@ function App() {
     'hotels', 'flights', 'insurance', 'tripplanner', 'carrental', 'manual-planner'
   ];
   const showNavBar = authenticatedViews.includes(view);
-  const pageLoader = <div style={{ padding: '24px', textAlign: 'center' }}>Loading...</div>;
+  const pageLoader = <div className="loader-container" style={{ padding: '24px', textAlign: 'center' }}>Loading...</div>;
 
   const renderContent = () => {
+    // Collect all shared props into one object to fix the TS errors shown in your image
+    const commonProps = {
+      setView: handleSetView,
+      globalCurrency,
+      exchangeRates,
+      globalLang
+    };
+
     switch (view) {
-      case 'home': return <HomePage setView={handleSetView} globalCurrency={globalCurrency} />;
+      case 'home': return <HomePage {...commonProps} />;
       case 'profile': return (
         <ProfilePage 
-          setView={handleSetView} 
-          globalCurrency={globalCurrency} 
-          setGlobalCurrency={setGlobalCurrency} 
+          {...commonProps}
+          setGlobalCurrency={(newCurr: any) => {
+              setGlobalCurrency(newCurr);
+              localStorage.setItem('userCurrency', JSON.stringify(newCurr));
+          }} 
+          setGlobalLang={setGlobalLang}
           cashbackBalance={cashbackBalance}
           setCashbackBalance={setCashbackBalance}
         />
       );
       
-      // These will now accept handleSetView because we fixed the parameter types
-      case 'hotels': return <HotelsPage setView={handleSetView} />;
-      case 'flights': return <FlightsPage setView={handleSetView} />;
-      case 'insurance': return <InsurancePage setView={handleSetView} />;
-      case 'tripplanner': return <TripPlannerPage setView={handleSetView} />;
-      case 'manual-planner': return <ManualPlannerPage setView={handleSetView} />;
-      case 'carrental': return <CarRentalPage setView={handleSetView} />;
+      case 'hotels': return <HotelsPage {...commonProps} />;
+      case 'flights': return <FlightsPage {...commonProps} />;
+      case 'insurance': return <InsurancePage {...commonProps} />;
+      case 'tripplanner': return <TripPlannerPage {...commonProps} />;
+      case 'manual-planner': return <ManualPlannerPage {...commonProps} />;
+      case 'carrental': return <CarRentalPage {...commonProps} />;
       
       case 'chatbot': return <ChatbotPage setView={handleSetView} />;
-      case 'booking': return <BookingPage setView={handleSetView} />;
+      case 'booking': return <BookingPage {...commonProps} />; // Fixed the globalLang error here
       case 'notification': return <NotificationPage setView={handleSetView} />;
       case 'view-ticket': return <ViewTicket ticketId={selectedTicketId} setView={handleSetView} />;
       case 'refund': return <RefundPage bookingId={selectedTicketId} setView={handleSetView} />;
       case 'about': return <AboutUs setView={handleSetView} />;
       case 'help': return <HelpCenter setView={handleSetView} />;
       case 'edit-profile': return <EditProfile setView={handleSetView} />;
-      case 'saved': return <SavedPage setView={handleSetView} />;
+      case 'saved': return <SavedPage setView={handleSetView} globalCurrency={globalCurrency} />;
       case 'my-reviews': return <MyReviews setView={handleSetView} />;
       
       default: return null;
@@ -139,11 +175,7 @@ function App() {
 
   return (
     <div className="app-container">
-      {view === 'landing' && (
-        <Suspense fallback={pageLoader}>
-          <LandingPage />
-        </Suspense>
-      )}
+      {view === 'landing' && <LandingPage />}
       
       {(view === 'auth' || view === 'register') && (
         <Suspense fallback={pageLoader}>
@@ -162,9 +194,21 @@ function App() {
               {renderContent()}
             </Suspense>
           </main>
-          <div className="persistent-chatbot-btn" onClick={() => setView('chatbot')}>
-            <MessageCircle color="#7b2cbf" />
+
+          <div
+            className={`persistent-chatbot-btn ${showFloatingChat ? 'persistent-chatbot-btn--active' : ''}`}
+            onClick={() => setShowFloatingChat((v) => !v)}
+          >
+            <img src={mascotImg} alt="AI Assistant" className="persistent-chatbot-mascot" />
           </div>
+
+          {showFloatingChat && (
+            <FloatingChatWidget
+              onClose={() => setShowFloatingChat(false)}
+              onOpenFull={() => { setShowFloatingChat(false); setView('chatbot'); }}
+            />
+          )}
+
           <BottomNav currentView={view} setView={handleSetView} />
         </>
       )}

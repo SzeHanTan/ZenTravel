@@ -1,196 +1,213 @@
-import type { ExtractedIncident, TravelContext, WorkflowAction, WorkflowFailure } from './types';
-import { createGLMClientFromEnv } from '../services/glmClient';
+/**
+ * ZenTravel Brain Master — ReAct Orchestration Engine
+ * * Implements the full Reason → Act → Observe loop and 
+ * handles specialized sourcing for Flights and Hotels.
+ */
 
+import { createGLMClientFromEnv } from '../services/glmClient';
+import {
+  executeTool,
+  type FlightOffer,
+  type HotelOffer,
+  type CompensationResult,
+  type ToolCallPlan,
+  type ToolResult,
+} from '../services/mockTravelAPI';
+import type { ExtractedIncident, TravelContext, WorkflowAction, WorkflowFailure } from './types';
+
+// --- Helper Logic ---
 function shouldFail(probability: number): boolean {
   return Math.random() < probability;
 }
 
+// ─── ReAct Step 1: GLM plans which tools to call ──────────────────────────────
+
+const TOOL_PLANNING_SYSTEM = `You are ZenTravel's AI Orchestrator using the ReAct framework.
+Given a travel disruption, reason about what data you need and output a JSON tool execution plan.
+
+Available tools:
+- search_flights: {"tool":"search_flights","params":{"from":"IATA","to":"IATA","count":3}}
+- search_hotels:  {"tool":"search_hotels","params":{"airport":"IATA"}}
+- check_compensation: {"tool":"check_compensation","params":{"type":"cancellation|delay|lost_luggage"}}
+
+Return ONLY a JSON object:
+{
+  "reasoning": "One sentence: why these tools are needed.",
+  "tools": [ ... ]
+}
+
+Rules:
+- Use IATA codes (KUL, NRT, etc.)
+- Max 3 tools total.`;
+
+export interface ToolPlan {
+  reasoning: string;
+  tools: ToolCallPlan[];
+}
+
+export async function planToolCalls(incident: ExtractedIncident): Promise<ToolPlan> {
+  const glm = createGLMClientFromEnv();
+  if (!glm) return buildFallbackPlan(incident);
+
+  try {
+    const raw = await glm.complete([
+      { role: 'system', content: TOOL_PLANNING_SYSTEM },
+      { role: 'user', content: `Disruption: ${incident.disruptionType}. Route: ${incident.origin} to ${incident.destination}.` }
+    ], 180);
+
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleaned) as ToolPlan;
+  } catch {
+    return buildFallbackPlan(incident);
+  }
+}
+
+function buildFallbackPlan(incident: ExtractedIncident): ToolPlan {
+  const from = incident.origin ?? 'KUL';
+  const to = incident.destination ?? 'SIN';
+  return {
+    reasoning: "Standard recovery for route.",
+    tools: [{ tool: 'search_flights', params: { from, to, count: 3 } }]
+  };
+}
+
+// ─── ReAct Step 2: Execute tools ──────────────────────────────────────────────
+
+export async function executeTools(plan: ToolPlan): Promise<ToolResult[]> {
+  return Promise.all(plan.tools.map((call) => executeTool(call)));
+}
+
+// ─── ReAct Step 3: GLM synthesises tool results ───────────────────────────────
+
+const SYNTHESIS_SYSTEM = `You are ZenTravel's AI Recovery Specialist. Return ONLY valid JSON:
+{
+  "observe": "One sentence summary.",
+  "flight_options": "Numbered list with ⭐ for best.",
+  "hotel_options": "Numbered list with ⭐ for best.",
+  "compensation_summary": "Eligibility details.",
+  "compensation_email": "Ready-to-send draft.",
+  "traveller_summary": "Two sentence recommendation."
+}`;
+
+export interface SynthesisResult {
+  observe: string;
+  flight_options: string | null;
+  hotel_options: string | null;
+  compensation_summary: string | null;
+  compensation_email: string | null;
+  traveller_summary: string;
+  usedGLM: boolean;
+}
+
+export async function synthesiseResults(incident: ExtractedIncident, toolResults: ToolResult[]): Promise<SynthesisResult> {
+  const glm = createGLMClientFromEnv();
+  if (!glm) throw new Error("GLM not found");
+
+  try {
+    const raw = await glm.complete([
+      { role: 'system', content: SYNTHESIS_SYSTEM },
+      { role: 'user', content: `Results: ${JSON.stringify(toolResults)}` }
+    ], 400);
+
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    const result = JSON.parse(cleaned) as SynthesisResult;
+    result.usedGLM = true;
+    return result;
+  } catch (err) {
+    throw new Error("Synthesis failed");
+  }
+}
+
+// ─── Specialized Agents (Hotel, Flight, Compensation) ─────────────────────────
+
+/**
+ * HOTEL AGENT
+ * Job A: Emergency Recovery
+ * Job B: Standard Sourcing
+ */
 export async function hotelAgent(incident: ExtractedIncident): Promise<WorkflowAction> {
   const glm = createGLMClientFromEnv();
-
-  const isSearch = incident.summary.toLowerCase().includes("search") && 
-                   incident.disruptionType === 'unknown';
+  const isSearch = incident.summary.toLowerCase().includes("search") && incident.disruptionType === 'unknown';
 
   if (isSearch) {
     if (!glm) return { id: 'h-err', agent: 'hotel', description: 'AI Source', status: 'failed', error: 'ILMU Client not found' };
-
-    const prompt = [
-      {
-        role: 'system',
-        content: `You are a high-speed travel API. 
-        TASK: Return exactly 3 hotels in ${incident.destination}.
-        RULES:
-        1. Output ONLY a minified JSON array. No conversational text.
-        2. description must be 1 sentence only.
-        3. amenities must be max 3 items.
-        4. Do not perform external research; use internal knowledge for speed.`
-      },
-      { role: 'user', content: `Fast-track hotel list for: ${incident.summary}` }
-    ];
+    const prompt = [{
+      role: 'system',
+      content: `Return exactly 3 hotels in ${incident.destination} as minified JSON array: [{name, location, price, rating, description, amenities[], image_keyword}].`
+    }];
     try {
-      // 🚀 Reduced hotel count and simplified descriptions make this much faster
       const response = await glm.complete(prompt as any);
-      const cleanJson = response.replace(/```json|```/g, "").trim();
-      return {
-        id: `hotel-source-${Date.now()}`,
-        agent: 'hotel',
-        description: `Sourced hotels for ${incident.destination}`,
-        status: 'completed',
-        output: cleanJson
-      };
-    } catch (error: any) {
-      return { id: 'h-err', agent: 'hotel', description: 'AI Source', status: 'failed', error: 'The AI took too long to respond. Try again.' };
+      return { id: `hotel-source-${Date.now()}`, agent: 'hotel', description: 'Sourced hotels', status: 'completed', output: response.replace(/```json|```/g, "").trim() };
+    } catch (error) {
+      return { id: 'h-err', agent: 'hotel', description: 'AI Source', status: 'failed', error: 'Timeout' };
     }
   }
 
-  // --- JOB B: The Original Job (Emergency Recovery) ---
-  // This part remains exactly as per your original logic
+  // Original Emergency Logic
   if (incident.disruptionType !== 'cancellation' && incident.disruptionType !== 'delay') {
-    return {
-      id: 'hotel-backup',
-      agent: 'hotel',
-      description: 'Offer emergency accommodation',
-      status: 'skipped',
-      output: 'No accommodation action required for this disruption.',
-    };
+    return { id: 'hotel-backup', agent: 'hotel', description: 'Emergency accommodation', status: 'skipped', output: 'Not required.' };
   }
-
-  if (shouldFail(0.1)) {
-    return {
-      id: 'hotel-backup',
-      agent: 'hotel',
-      description: 'Offer emergency accommodation',
-      status: 'failed',
-      error: 'Hotel inventory service unavailable.',
-    };
-  }
-
-  return {
-    id: 'hotel-backup',
-    agent: 'hotel',
-    description: 'Reserve nearby hotel with late check-in',
-    status: 'completed',
-    output: 'Held a room near airport for one night with free cancellation.',
-  };
+  return { id: 'hotel-backup', agent: 'hotel', description: 'Emergency accommodation', status: 'completed', output: 'Voucher for Airport Hotel reserved.' };
 }
 
 /**
- * REFINED FLIGHT AGENT
- * Job A: Emergency Rebooking (Original)
- * Job B: Standard Sourcing (New)
+ * FLIGHT AGENT
+ * Job A: Emergency Rebooking
+ * Job B: Standard Sourcing
  */
 export async function flightAgent(incident: ExtractedIncident): Promise<WorkflowAction> {
   const glm = createGLMClientFromEnv();
-
-  // --- JOB B: Standard Flight Sourcing (New) ---
-  const isSearch = incident.summary.toLowerCase().includes("search") && 
-                   incident.disruptionType === 'unknown';
+  const isSearch = incident.summary.toLowerCase().includes("search") && incident.disruptionType === 'unknown';
 
   if (isSearch) {
-    if (!glm) return { id: 'f-err', agent: 'flight', description: 'AI Source', status: 'failed', error: 'ILMU Client not found' };
-
-    const prompt = [
-      {
-        role: 'system',
-        content: `You are a flight sourcing agent. Find 3 real flight options from ${incident.origin} to ${incident.destination}.
-        Return ONLY a JSON array. Each object: {airline, flightNum, price, timeDepart, timeLanding, duration}.
-        Times must be in string format (e.g., "23 April 2026 at 13:55:00 UTC+8").`
-      },
-      { role: 'user', content: incident.summary }
-    ];
-
+    const prompt = [{
+      role: 'system',
+      content: `Sourcing agent. Find 3 flights from ${incident.origin} to ${incident.destination}. JSON array: [{airline, flightNum, price, timeDepart, timeLanding, duration}].`
+    }];
     try {
       const response = await glm.complete(prompt as any);
-      const cleanJson = response.replace(/```json|```/g, "").trim();
-      return {
-        id: `flight-source-${Date.now()}`,
-        agent: 'flight',
-        description: `Sourced flights for ${incident.destination}`,
-        status: 'completed',
-        output: cleanJson
-      };
-    } catch (error: any) {
-      return { id: 'f-err', agent: 'flight', description: 'AI Source', status: 'failed', error: error.message };
+      return { id: `flight-source-${Date.now()}`, agent: 'flight', description: 'Sourced flights', status: 'completed', output: response.replace(/```json|```/g, "").trim() };
+    } catch (error) {
+      return { id: 'f-err', agent: 'flight', description: 'AI Source', status: 'failed', error: 'Timeout' };
     }
   }
 
-  // --- JOB A: Emergency Recovery (Original - Unchanged) ---
-  if (!incident.destination) {
-    return { id: 'f-err', agent: 'flight', description: 'Search alternative', status: 'failed', error: 'Missing destination' };
-  }
-
-  if (shouldFail(0.12)) {
-    return { id: 'f-err', agent: 'flight', description: 'Search alternative', status: 'failed', error: 'Flight API timeout' };
-  }
-
-  return {
-    id: 'flight-rebook',
-    agent: 'flight',
-    description: 'Search and hold a rebooking option',
-    status: 'completed',
-    output: `Reserved seat on ZT-221 from ${incident.origin ?? 'current airport'} to ${incident.destination}.`,
-  };
+  // Emergency Logic
+  if (!incident.destination) return { id: 'f-err', agent: 'flight', description: 'Search', status: 'failed', error: 'No destination' };
+  return { id: 'flight-rebook', agent: 'flight', description: 'Search rebooking', status: 'completed', output: `ZT-221 ${incident.origin} to ${incident.destination}` };
 }
 
-/**
- * COMPENSATION AGENT: Original Logic
- */
 export async function compensationAgent(incident: ExtractedIncident): Promise<WorkflowAction> {
   const eligible = incident.disruptionType === 'cancellation' || incident.disruptionType === 'delay';
-  if (!eligible) {
-    return {
-      id: 'comp-claim',
-      agent: 'compensation',
-      description: 'Prepare compensation draft',
-      status: 'skipped',
-      output: 'Compensation is not applicable for this case.',
-    };
-  }
-
   return {
     id: 'comp-claim',
     agent: 'compensation',
-    description: 'Draft compensation and insurance claim packet',
-    status: 'completed',
-    output: 'Generated claim packet with disruption timeline and reimbursement request.',
+    description: 'Compensation draft',
+    status: eligible ? 'completed' : 'skipped',
+    output: eligible ? 'Eligible for EUR 600.' : 'Not applicable.'
   };
 }
 
-/**
- * COMMUNICATION AGENT: Original Logic
- */
-export async function communicationAgent(
-  context: TravelContext,
-  actions: WorkflowAction[],
-): Promise<WorkflowAction> {
-  const failedActions = actions.filter((action) => action.status === 'failed');
-  const successfulActions = actions.filter((action) => action.status === 'completed');
-
-  const statusText =
-    failedActions.length > 0
-      ? `Shared recovery progress with fallback steps. ${failedActions.length} action(s) need retry.`
-      : 'Shared full action summary with confirmation links.';
-
+export async function communicationAgent(_context: TravelContext, actions: WorkflowAction[]): Promise<WorkflowAction> {
+  const completed = actions.filter((a) => a.status === 'completed').length;
   return {
     id: 'user-update',
     agent: 'communication',
-    description: `Send structured update to traveler (${context.locale})`,
-    status: successfulActions.length > 0 ? 'completed' : 'failed',
-    output: statusText,
-    error: successfulActions.length > 0 ? undefined : 'No successful action to communicate.',
+    description: 'Summary',
+    status: 'completed',
+    output: `Recovery ready: ${completed} actions prepared.`
   };
 }
 
-/**
- * FAILURE MAPPING: Original Logic
- */
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 export function mapActionFailures(stage: 'planning' | 'execution', actions: WorkflowAction[]): WorkflowFailure[] {
   return actions
-    .filter((action) => action.status === 'failed')
-    .map((action) => ({
+    .filter((a) => a.status === 'failed')
+    .map((a) => ({
       stage,
-      reason: `${action.agent} agent failed: ${action.error ?? 'unknown error'}`,
+      reason: `${a.agent} agent: ${a.error ?? 'failed'}`,
       recoverable: true,
-      nextBestStep: 'Ask user for approval to retry with fallback provider.',
+      nextBestStep: 'Retry or contact support.'
     }));
 }

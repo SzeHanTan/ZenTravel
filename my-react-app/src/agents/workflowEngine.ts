@@ -1,120 +1,116 @@
+/**
+ * ZenTravel Brain Master — 5-Stage Workflow Engine
+ *
+ * Stage 1 · Input Agent      GLM understands unstructured traveller message
+ * Stage 2 · Validation       Rule-based check for missing critical fields
+ * Stage 3 · ReAct: REASON    GLM decides which tools to call (tool planning)
+ * Stage 4 · ReAct: ACT       App executes Travel API calls with GLM's parameters
+ * Stage 5 · ReAct: OBSERVE   GLM synthesises API results into the recovery plan
+ */
+
 import { createGLMClientFromEnv } from '../services/glmClient';
-import {
-  communicationAgent,
-  compensationAgent,
-  flightAgent,
-  hotelAgent,
-  mapActionFailures,
-} from './tools';
+import { runReActOrchestration, mapActionFailures, hotelAgent, flightAgent } from './tools';
 import type {
   ExtractedIncident,
   IncidentInput,
   RecoveryPlan,
   StructuredWorkflowOutput,
-  TravelContext,
-  WorkflowAction,
   WorkflowFailure,
 } from './types';
 
-/** * --- ORIGINAL FUNCTIONS (PRESERVED) --- */
+// ─── Stage 1 Helpers ──────────────────────────────────────────────────────────
 
 function inferDisruptionType(text: string): ExtractedIncident['disruptionType'] {
-  const lower = text.toLowerCase();
-  if (lower.includes('cancel')) return 'cancellation';
-  if (lower.includes('delay')) return 'delay';
-  if (lower.includes('luggage') || lower.includes('bag')) return 'lost_luggage';
+  const t = text.toLowerCase();
+  if (t.includes('cancel')) return 'cancellation';
+  if (t.includes('delay') || t.includes('late')) return 'delay';
+  if (t.includes('luggage') || t.includes('bag') || t.includes('lost')) return 'lost_luggage';
   return 'unknown';
 }
 
 function extractFlightNumber(text: string): string | undefined {
-  const match = text.match(/\b([A-Z]{2}\s?-?\s?\d{2,4})\b/i);
-  return match?.[1]?.replace(/\s+/g, '').toUpperCase();
+  return text.match(/\b([A-Z]{2}\s?-?\s?\d{2,4})\b/i)?.[1]
+    ?.replace(/\s+/g, '').toUpperCase();
 }
 
-function extractCities(text: string): { origin?: string; destination?: string } {
-  const routeMatch = text.match(/from\s+([A-Za-z\s]+)\s+to\s+([A-Za-z\s]+)/i);
-  if (!routeMatch) return {};
-  return {
-    origin: routeMatch[1].trim(),
-    destination: routeMatch[2].trim(),
-  };
+function extractRoute(text: string): { origin?: string; destination?: string } {
+  const full = text.match(/from\s+([A-Za-z][\w\s]{1,25}?)\s+to\s+([A-Za-z][\w\s]{1,25}?)/i);
+  if (full) return { origin: full[1].trim(), destination: full[2].trim() };
+  
+  const flightTo = text.match(/(?:flight|flying|fly)\s+to\s+([A-Za-z][\w\s]{1,25}?)/i);
+  if (flightTo) return { destination: flightTo[1].trim() };
+  
+  return {};
 }
 
 function buildFallbackExtraction(input: IncidentInput): ExtractedIncident {
   const disruptionType = inferDisruptionType(input.rawInput);
   const flightNumber = extractFlightNumber(input.rawInput);
-  const { origin, destination } = extractCities(input.rawInput);
-  const missingFields: string[] = [];
-  const ambiguityNotes: string[] = [];
+  const { origin, destination } = extractRoute(input.rawInput);
 
-  if (!flightNumber) missingFields.push('flight number');
-  if (!origin) missingFields.push('origin');
-  if (!destination) missingFields.push('destination');
-  if (disruptionType === 'unknown') ambiguityNotes.push('Could not confidently infer disruption type.');
+  const missing: string[] = [];
+  if (!flightNumber) missing.push('flight number');
+  if (!destination) missing.push('destination');
 
   return {
-    summary: input.rawInput.slice(0, 180),
+    summary: input.rawInput.slice(0, 200),
     disruptionType,
     flightNumber,
     origin,
     destination,
-    confidence: disruptionType === 'unknown' ? 0.45 : 0.72,
-    missingFields,
-    ambiguityNotes,
+    confidence: disruptionType === 'unknown' ? 0.4 : 0.75,
+    missingFields: missing,
+    ambiguityNotes: disruptionType === 'unknown' ? ['Manual fallback used'] : [],
   };
 }
 
-function getClarifyingQuestions(incident: ExtractedIncident): string[] {
-  const questions: string[] = [];
-  if (incident.missingFields.includes('flight number')) questions.push('Can you share the flight number?');
-  if (incident.missingFields.includes('destination')) questions.push('Where were you flying to?');
-  if (incident.disruptionType === 'unknown') questions.push('Was your flight delayed, cancelled, or was it a baggage issue?');
-  return questions;
-}
+// ─── Stage 1: Input Agent (GLM) ───────────────────────────────────────────────
 
 async function inputAgent(input: IncidentInput): Promise<{ incident: ExtractedIncident; usedGLM: boolean }> {
   const glm = createGLMClientFromEnv();
   if (!glm) return { incident: buildFallbackExtraction(input), usedGLM: false };
+
   try {
-    const content = await glm.complete([{ role: 'system', content: 'Extract travel disruption fields. Return STRICT JSON.' }, { role: 'user', content: input.rawInput }]);
-    const parsed = JSON.parse(content) as ExtractedIncident;
+    const raw = await glm.complete([
+      {
+        role: 'system',
+        content: `You are ZenTravel's Input Agent. Extract data into STRICT JSON: 
+        {summary, disruptionType("delay"|"cancellation"|"lost_luggage"|"unknown"), flightNumber, origin, destination, confidence, missingFields[]}.`
+      },
+      { role: 'user', content: input.rawInput },
+    ], 250);
+
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(cleaned) as ExtractedIncident;
     return { incident: parsed, usedGLM: true };
-  } catch {
+  } catch (err) {
+    console.error("Input Agent GLM Error:", err);
     return { incident: buildFallbackExtraction(input), usedGLM: false };
   }
 }
 
-async function disruptionAnalysisAgent(incident: ExtractedIncident): Promise<string[]> {
-  return [`Detected disruption type: ${incident.disruptionType}.`];
+// ─── Stage 2: Clarification Check ─────────────────────────────────────────────
+
+function getClarifyingQuestions(incident: ExtractedIncident): string[] {
+  const q: string[] = [];
+  if (incident.missingFields.includes('destination') && !incident.destination) 
+    q.push('Where were you flying to?');
+  if (incident.disruptionType === 'unknown') 
+    q.push('Was your flight delayed, cancelled, or was this a baggage issue?');
+  return q;
 }
 
-function userContextAgent(userId: string): TravelContext {
-  return { userId, locale: 'en-MY', currency: 'MYR', disruptionHistory: [] };
-}
+// ─── Standard Sourcing Workflows (Hotels/Flights) ───────────────────────────
 
-function smartRecoveryEngine(incident: ExtractedIncident, clarifyingQuestions: string[]): RecoveryPlan | null {
-  if (clarifyingQuestions.length > 0) return null;
-  return {
-    strategy: 'Prioritize itinerary continuity.',
-    priority: incident.disruptionType === 'cancellation' ? 'high' : 'medium',
-    userApprovalRequired: true,
-    actions: [
-      { id: 'flight-rebook', agent: 'flight', description: 'Alternative flight search', status: 'pending' },
-      { id: 'hotel-backup', agent: 'hotel', description: 'Emergency accommodation', status: 'pending' }
-    ],
-  };
-}
-
-/** * --- NEW: HOTEL SEARCH WORKFLOW --- */
 export async function runHotelSearchWorkflow(destination: string, startDate: string, endDate: string, guests: number): Promise<StructuredWorkflowOutput> {
   const startedAt = performance.now();
-  const summary = `SEARCH: Hotels in ${destination} for ${guests} guests from ${startDate} to ${endDate}`;
+  const summary = `SEARCH: Hotels in ${destination}`;
   const incident: ExtractedIncident = { summary, disruptionType: 'unknown', destination, confidence: 1.0, missingFields: [], ambiguityNotes: [] };
   const hAction = await hotelAgent(incident);
   return {
     stage: 'completed',
     incident,
-    reasoning: ['Agent identified standard search intent', 'Connecting to online sourcing tools'],
+    reasoning: ['User initiated hotel search', 'Agent bypasses recovery logic for direct sourcing'],
     clarifyingQuestions: [],
     plan: { strategy: 'AI Sourcing', priority: 'medium', userApprovalRequired: false, actions: [hAction] },
     failures: [],
@@ -123,16 +119,15 @@ export async function runHotelSearchWorkflow(destination: string, startDate: str
   };
 }
 
-/** * --- NEW: FLIGHT SEARCH WORKFLOW --- */
 export async function runFlightSearchWorkflow(origin: string, destination: string, date: string, pax: number, fClass: string): Promise<StructuredWorkflowOutput> {
   const startedAt = performance.now();
-  const summary = `SEARCH: Flights from ${origin} to ${destination} on ${date} for ${pax} in ${fClass}`;
+  const summary = `SEARCH: Flights from ${origin} to ${destination}`;
   const incident: ExtractedIncident = { summary, disruptionType: 'unknown', origin, destination, confidence: 1.0, missingFields: [], ambiguityNotes: [] };
   const fAction = await flightAgent(incident);
   return {
     stage: 'completed',
     incident,
-    reasoning: ['Consulting airline GDS', 'Retrieving flight availability'],
+    reasoning: ['User initiated flight search', 'Querying global flight schedules'],
     clarifyingQuestions: [],
     plan: { strategy: 'Sourcing', priority: 'medium', userApprovalRequired: false, actions: [fAction] },
     failures: [],
@@ -141,27 +136,69 @@ export async function runFlightSearchWorkflow(origin: string, destination: strin
   };
 }
 
-/** * --- ORIGINAL WORKFLOW (PRESERVED) --- */
-export async function runZenTravelWorkflow(rawInput: string, userId = 'anonymous-user'): Promise<StructuredWorkflowOutput> {
+// ─── Main Orchestration Workflow (The 5-Stage Engine) ─────────────────────────
+
+export async function runZenTravelWorkflow(rawInput: string): Promise<StructuredWorkflowOutput> {
   const startedAt = performance.now();
   const failures: WorkflowFailure[] = [];
   const input: IncidentInput = { rawInput, source: 'chat', timestamp: new Date().toISOString() };
-  const { incident, usedGLM } = await inputAgent(input);
-  const reasoning = await disruptionAnalysisAgent(incident);
-  const clarifyingQuestions = getClarifyingQuestions(incident);
-  const context = userContextAgent(userId);
-  const plan = smartRecoveryEngine(incident, clarifyingQuestions);
 
-  if (!plan) {
-    return { stage: 'paused', incident, reasoning, clarifyingQuestions, plan: null, failures, finalMessage: 'I need more detail.', metadata: { usedGLM, fallbackUsed: !usedGLM, executionMs: Math.round(performance.now() - startedAt) } };
+  // --- Stage 1: Extraction ---
+  const { incident, usedGLM: glm1 } = await inputAgent(input);
+
+  const reasoning: string[] = [
+    `[Stage 1 — Input Agent] GLM extracted: type="${incident.disruptionType}", route=${incident.origin ?? '?'} → ${incident.destination ?? '?'}.`,
+  ];
+
+  // --- Stage 2: Validation ---
+  const clarifyingQuestions = getClarifyingQuestions(incident);
+
+  if (clarifyingQuestions.length > 0) {
+    reasoning.push(`[Stage 2 — Validation] Missing critical data. Pausing for user input.`);
+    return {
+      stage: 'paused',
+      incident,
+      reasoning,
+      clarifyingQuestions,
+      plan: null,
+      failures,
+      finalMessage: 'I need a few more details to build your recovery plan.',
+      metadata: { usedGLM: glm1, fallbackUsed: !glm1, executionMs: Math.round(performance.now() - startedAt) },
+    };
   }
 
-  const executedActions: WorkflowAction[] = [];
-  executedActions.push(await flightAgent(incident));
-  executedActions.push(await hotelAgent(incident));
-  executedActions.push(await compensationAgent(incident));
-  executedActions.push(await communicationAgent(context, executedActions));
-  failures.push(...mapActionFailures('execution', executedActions));
-  
-  return { stage: 'completed', incident, reasoning, clarifyingQuestions: [], plan: { ...plan, actions: executedActions }, failures, finalMessage: 'Workflow complete.', metadata: { usedGLM, fallbackUsed: !usedGLM, executionMs: Math.round(performance.now() - startedAt) } };
+  reasoning.push(`[Stage 2 — Validation] All clear. Escalating to ReAct engine.`);
+
+  // --- Stages 3–5: ReAct (Reason → Act → Observe) ---
+  const react = await runReActOrchestration(incident);
+
+  reasoning.push(
+    `[Stage 3 — REASON] ${react.reactSteps[0].replace('[REASON] ', '')}`,
+    `[Stage 4 — ACT] Executed: ${react.toolResults.map(r => r.tool).join(', ')}`,
+    `[Stage 5 — OBSERVE] ${react.synthesis.observe}`
+  );
+
+  const finalUsedGLM = glm1 || react.synthesis.usedGLM;
+  failures.push(...mapActionFailures('execution', react.actions));
+  const allFailed = react.actions.every((a) => a.status !== 'completed');
+
+  const plan: RecoveryPlan = {
+    strategy: 'Prioritise travel continuity, then financial recovery.',
+    priority: incident.disruptionType === 'cancellation' ? 'high' : 'medium',
+    userApprovalRequired: true,
+    actions: react.actions,
+  };
+
+  return {
+    stage: allFailed ? 'failed' : 'completed',
+    incident,
+    reasoning,
+    clarifyingQuestions: [],
+    plan,
+    failures,
+    finalMessage: allFailed 
+      ? 'Automatic recovery failed. Please use specialist agents.' 
+      : 'Recovery plan complete. Review your options below.',
+    metadata: { usedGLM: finalUsedGLM, fallbackUsed: !finalUsedGLM, executionMs: Math.round(performance.now() - startedAt) },
+  };
 }

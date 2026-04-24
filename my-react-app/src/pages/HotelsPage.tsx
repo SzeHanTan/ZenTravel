@@ -7,6 +7,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { HotelResultsPage } from './HotelResultsPage';
 import "../styles/HotelsPage.css";
 
+// --- Main Component ---
 export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView }) => {
   const [viewMode, setViewMode] = useState<'search' | 'results'>('search');
   const [loading, setLoading] = useState(false);
@@ -40,10 +41,10 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
         setHotels(JSON.parse(hAction.output));
         setViewMode('results');
       } else {
-        throw new Error("Timeout");
+        throw new Error("Timeout or empty output");
       }
     } catch (err) {
-      console.warn("AI Timeout - Loading Demo Stays instead.");
+      console.warn("AI Timeout or Error - Loading Demo Stays instead.");
       // 🚀 EMERGENCY FALLBACK DATA
       const demoHotels = [
         {
@@ -75,7 +76,7 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
         imageUrl: `https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&sig=${hotel.image_keyword}`,
         name: hotel.name,
         passenger: "wanyee",
-        price: parseInt(hotel.price.replace(/[^0-9]/g, "")) || 500,
+        price: typeof hotel.price === 'string' ? parseInt(hotel.price.replace(/[^0-9]/g, "")) : hotel.price,
         status: "upcoming",
         type: "hotel",
         userId: "4mLjskOCkeUgoXxHA5K6" 
@@ -84,6 +85,7 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
       alert(`Success! Booked ${hotel.name}.`);
       setView('booking');
     } catch (err) {
+      console.error("Firebase Error:", err);
       alert("Firebase save failed.");
     }
   };
@@ -111,7 +113,6 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
         <h2 className="section-title">Hotels</h2>
 
         <div className="hotel-search-card">
-          {/* 1. Destination Input */}
           <div className="search-row">
             <Search size={18} color="#7b2cbf" />
             <input 
@@ -122,7 +123,6 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
             />
           </div>
 
-          {/* 2. Date Selection */}
           <div className="search-row clickable" onClick={() => setShowDateModal(true)}>
             <Calendar size={18} color="#7b2cbf" />
             <div className="row-text">
@@ -131,7 +131,6 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
             <span className="night-count">{calculateNights()} night(s)</span>
           </div>
 
-          {/* 3. Occupancy Selection */}
           <div className="search-row clickable" onClick={() => setShowGuestModal(true)}>
             <User size={18} color="#7b2cbf" />
             <div className="row-text">
@@ -144,7 +143,7 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
           </button>
         </div>
 
-        {/* --- MODAL: Dates (Restored Design) --- */}
+        {/* --- MODAL: Dates --- */}
         {showDateModal && (
           <div className="modal-overlay" onClick={() => setShowDateModal(false)}>
             <div className="modal-card guest-modal" onClick={e => e.stopPropagation()}>
@@ -161,7 +160,7 @@ export const HotelsPage: React.FC<{ setView: (v: string) => void }> = ({ setView
           </div>
         )}
 
-        {/* --- MODAL: Occupancy (Restored Design) --- */}
+        {/* --- MODAL: Occupancy --- */}
         {showGuestModal && (
           <div className="modal-overlay" onClick={() => setShowGuestModal(false)}>
             <div className="modal-card guest-modal" onClick={e => e.stopPropagation()}>
