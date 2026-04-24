@@ -148,9 +148,14 @@ function App() {
 
     switch (view) {
       // 🤖 AI Integration: Pass setPendingSearch to HomePage
-      case 'home': return <HomePage {...commonProps} setPendingSearch={setPendingSearch} />;
-      // Pass selectedTicketId as selectedId to HomePage
-      case 'home': return <HomePage {...commonProps} selectedId={selectedTicketId} />;
+      case 'home':
+        return (
+          <HomePage
+            {...commonProps}
+            setPendingSearch={setPendingSearch}
+            selectedId={selectedTicketId}
+          />
+        );
       
       case 'profile': return (
         <ProfilePage 

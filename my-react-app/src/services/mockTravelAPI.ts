@@ -31,12 +31,25 @@ export interface HotelOffer {
 }
 
 export interface TransportOffer {
-  name:      string;
-  type:      string; 
-  priceMYR:  number;
-  rating:    number;
-  available: boolean;
-  note:      string;
+  id: string;
+  name: string;
+  company: string;
+  imageUrl: string;
+  driverName?: string;
+  driverPhone?: string;
+  model?: string;
+  carType: string;
+  transmission?: string;
+  fuelType?: string;
+  plateNum: string;
+  price: number;
+  seats: number;
+  bags: number;
+  rentalDays?: number;
+  pickupLabel: string;
+  dropoffLabel: string;
+  summary: string;
+  recommended?: boolean;
 }
 
 export interface CompensationResult {
@@ -212,12 +225,80 @@ const TRANSPORT_OFFERS: Record<string, TransportOffer[]> = {
 };
 
 const DEFAULT_HOTELS: HotelOffer[] = [
-  { name: 'Airport Transit Hotel', stars: 3, distance: 'At terminal', priceMYR: 280, amenity: 'Hourly rates', available: true, recommended: true },
+  { name: 'Airport Transit Hotel',   stars: 3, distance: 'At terminal',     priceMYR: 280, amenity: 'Hourly & nightly rates', available: true, recommended: true },
+  { name: 'Ibis Airport Hotel',      stars: 3, distance: '5-min shuttle',   priceMYR: 320, amenity: 'Restaurant & bar on-site', available: true },
+  { name: 'Novotel Airport Hotel',   stars: 4, distance: '10-min free bus', priceMYR: 490, amenity: 'Pool, gym, free cancellation', available: true },
 ];
 
-const DEFAULT_TRANSPORT: TransportOffer[] = [
-  { name: 'Local Taxi Service', type: 'Taxi', priceMYR: 50, rating: 4.0, available: true, note: 'Available at arrivals' },
+const TRANSPORT_COMPANIES = [
+  {
+    name: 'Grab',
+    company: 'https://logo.clearbit.com/grab.com',
+    imageUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    name: 'AirAsia Ride',
+    company: 'https://logo.clearbit.com/airasia.com',
+    imageUrl: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    name: 'Klook Transfer',
+    company: 'https://logo.clearbit.com/klook.com',
+    imageUrl: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    name: 'Traveloka Cars',
+    company: 'https://logo.clearbit.com/traveloka.com',
+    imageUrl: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=900&q=80',
+  },
 ];
+
+const TRANSPORT_PROFILES = [
+  { carType: 'sedan car', seats: 4, bags: 2, basePrice: 70, platePrefix: 'PJN' },
+  { carType: 'mpv', seats: 6, bags: 4, basePrice: 110, platePrefix: 'VKL' },
+  { carType: 'premium suv', seats: 5, bags: 3, basePrice: 165, platePrefix: 'WXX' },
+];
+
+// ─── Compensation rules ────────────────────────────────────────────────────────
+
+const COMPENSATION: Record<string, CompensationResult> = {
+  cancellation: {
+    eligible:      true,
+    amountEUR:     600,
+    amountMYR:     3000,
+    regulation:    'EU Regulation 261/2004 / Malaysia Aviation Consumer Protection Code 2016',
+    conditions:    [
+      'Cancellation notified less than 14 days before departure',
+      'Not caused by extraordinary circumstances (weather, ATC strikes)',
+      'Carrier must offer rerouting or full refund',
+    ],
+    claimDeadline: '6 years (Malaysia) / 3 years (EU)',
+  },
+  delay: {
+    eligible:      true,
+    amountEUR:     250,
+    amountMYR:     1300,
+    regulation:    'EU Regulation 261/2004 / Malaysia Aviation Consumer Protection Code 2016',
+    conditions:    [
+      'Delay of 3+ hours at final destination',
+      'Not caused by extraordinary circumstances',
+      'Carrier must provide meals, refreshments, accommodation if overnight',
+    ],
+    claimDeadline: '6 years (Malaysia) / 3 years (EU)',
+  },
+  lost_luggage: {
+    eligible:      true,
+    amountEUR:     1300,
+    amountMYR:     6500,
+    regulation:    'Montreal Convention 1999 — Article 22',
+    conditions:    [
+      'File Property Irregularity Report (PIR) at airport before leaving baggage claim',
+      'Submit formal claim within 21 days for delayed, 7 days for damaged baggage',
+      'Keep all receipts for essential purchases during delay',
+    ],
+    claimDeadline: '2 years from arrival date',
+  },
+};
 
 // ─── Public API functions ──────────────────────────────────────────────────────
 
@@ -233,6 +314,79 @@ export async function searchTransport(locationRaw: string, excludeName?: string)
   const code = toIATA(locationRaw);
   const transport = TRANSPORT_OFFERS[code] ?? DEFAULT_TRANSPORT;
   return excludeName ? transport.filter(t => t.name !== excludeName) : transport;
+}
+
+export async function searchTransportOffers(params: {
+  mode: 'rental' | 'pickup' | 'dropoff';
+  location: string;
+  startDate?: string;
+  endDate?: string;
+  rentalDays?: number;
+  pickupPoint?: string;
+  destination?: string;
+  flightNum?: string;
+}): Promise<TransportOffer[]> {
+  await new Promise((r) => setTimeout(r, 250));
+
+  const normalizedLocation = params.location.trim() || 'Kuala Lumpur';
+  const pickupLabel =
+    params.mode === 'dropoff'
+      ? (params.pickupPoint?.trim() || 'City Centre Pick-up')
+      : params.mode === 'pickup'
+        ? `${normalizedLocation} Airport`
+        : `${normalizedLocation} Pick-up Hub`;
+
+  const dropoffLabel =
+    params.mode === 'pickup'
+      ? (params.destination?.trim() || `${normalizedLocation} City Centre`)
+      : params.mode === 'dropoff'
+        ? `${normalizedLocation} Airport`
+        : `${normalizedLocation} Return Hub`;
+
+  const rentalDays = Math.max(1, params.rentalDays ?? 1);
+
+  return TRANSPORT_COMPANIES.slice(0, 3).map((companyInfo, index) => {
+    const profile = TRANSPORT_PROFILES[index % TRANSPORT_PROFILES.length];
+    const routeFactor = normalizedLocation.length % 7;
+    const modeFactor = params.mode === 'rental' ? 1.25 : params.mode === 'pickup' ? 1 : 1.1;
+    const basePrice = Math.round((profile.basePrice + routeFactor * 6 + index * 12) * modeFactor);
+    const price = params.mode === 'rental' ? basePrice * rentalDays : basePrice;
+    const model =
+      index === 0 ? 'Perodua Bezza 1.3 AV'
+      : index === 1 ? 'Toyota Innova 2.0 G'
+      : 'Honda CR-V 1.5 TC';
+    const transmission = index === 0 ? 'Automatic' : 'Automatic';
+    const fuelType = index === 2 ? 'Petrol Turbo' : 'Petrol';
+    const driverName = index === 0 ? 'Aiman' : index === 1 ? 'Farah' : 'Daniel';
+    const driverPhone = `+60 12-88${index + 2} ${6500 + index * 37}`;
+
+    return {
+      id: `${params.mode}-${index + 1}`,
+      name: companyInfo.name,
+      company: companyInfo.company,
+      imageUrl: companyInfo.imageUrl,
+      driverName,
+      driverPhone,
+      model,
+      carType: profile.carType,
+      transmission,
+      fuelType,
+      plateNum: `${profile.platePrefix} ${6500 + index * 37}`,
+      price,
+      seats: profile.seats,
+      bags: profile.bags,
+      rentalDays: params.mode === 'rental' ? rentalDays : undefined,
+      pickupLabel,
+      dropoffLabel,
+      summary:
+        params.mode === 'rental'
+          ? `${profile.carType} for self-drive travel around ${normalizedLocation}, priced for ${rentalDays} day${rentalDays > 1 ? 's' : ''}.`
+          : params.mode === 'pickup'
+            ? `Airport meet-and-greet${params.flightNum ? ` for ${params.flightNum.toUpperCase()}` : ''} with direct transfer to your destination.`
+            : `Private transfer from ${pickupLabel} to ${dropoffLabel}.`,
+      recommended: index === 0,
+    };
+  });
 }
 
 export async function checkCompensation(disruptionType: string): Promise<CompensationResult> {
