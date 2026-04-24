@@ -48,7 +48,7 @@ type ViewState =
 const API_KEY = import.meta.env.VITE_EXCHANGE_RATE_API_KEY;
 
 function App() {
-  const [view, setView] = useState<ViewState>('landing');
+  const [view, setView] = useState<ViewState>('home');
   const [selectedTicketId, setSelectedTicketId] = useState<string>(''); 
   const [user, setUser] = useState<any>(null);
   const [authLoaded, setAuthLoaded] = useState(false);

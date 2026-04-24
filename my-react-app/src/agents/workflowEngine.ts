@@ -102,7 +102,7 @@ function getClarifyingQuestions(incident: ExtractedIncident): string[] {
 
 // ─── Standard Sourcing Workflows (Hotels/Flights) ───────────────────────────
 
-export async function runHotelSearchWorkflow(destination: string, startDate: string, endDate: string, guests: number): Promise<StructuredWorkflowOutput> {
+export async function runHotelSearchWorkflow(destination: string, _startDate: string, _endDate: string, _guests: number): Promise<StructuredWorkflowOutput> {
   const startedAt = performance.now();
   const summary = `SEARCH: Hotels in ${destination}`;
   const incident: ExtractedIncident = { summary, disruptionType: 'unknown', destination, confidence: 1.0, missingFields: [], ambiguityNotes: [] };
@@ -119,7 +119,7 @@ export async function runHotelSearchWorkflow(destination: string, startDate: str
   };
 }
 
-export async function runFlightSearchWorkflow(origin: string, destination: string, date: string, pax: number, fClass: string): Promise<StructuredWorkflowOutput> {
+export async function runFlightSearchWorkflow(origin: string, destination: string, _date: string, _pax: number, _fClass: string): Promise<StructuredWorkflowOutput> {
   const startedAt = performance.now();
   const summary = `SEARCH: Flights from ${origin} to ${destination}`;
   const incident: ExtractedIncident = { summary, disruptionType: 'unknown', origin, destination, confidence: 1.0, missingFields: [], ambiguityNotes: [] };

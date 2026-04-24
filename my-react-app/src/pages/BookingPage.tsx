@@ -67,6 +67,7 @@ export const BookingPage = ({ setView, globalLang }: { setView: (view: any, id?:
         ) : (
           data.map(item => {
             const isFlight = item.type === 'flight' || item.type === 'ticket';
+            const isTransport = item.type === 'transport';
             return (
               <div key={item.id} className="zen-card-wrapper">
                 <div className="zen-status-badge">
@@ -124,7 +125,7 @@ export const BookingPage = ({ setView, globalLang }: { setView: (view: any, id?:
                         {t.refund}
                       </span>
                     )}
-                    {isFlight && (
+                    {(isFlight || isTransport) && (
                       <span className="zen-view-btn" onClick={() => setView('view-ticket', item.id)}>
                         {t.view}
                       </span>

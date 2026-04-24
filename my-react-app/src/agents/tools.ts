@@ -5,13 +5,10 @@
 import { createGLMClientFromEnv } from '../services/glmClient';
 import {
   executeTool,
-  type FlightOffer,
-  type HotelOffer,
-  type CompensationResult,
   type ToolCallPlan,
   type ToolResult,
 } from '../services/mockTravelAPI';
-import type { ExtractedIncident, TravelContext, WorkflowAction, WorkflowFailure } from './types';
+import type { ExtractedIncident, WorkflowAction, WorkflowFailure } from './types';
 
 // --- Interfaces for Orchestration ---
 export interface ToolPlan {
@@ -87,7 +84,7 @@ const SYNTHESIS_SYSTEM = `You are ZenTravel's Recovery Specialist. Return ONLY v
   "traveller_summary": "string"
 }`;
 
-export async function synthesiseResults(incident: ExtractedIncident, toolResults: ToolResult[]): Promise<SynthesisResult> {
+export async function synthesiseResults(_incident: ExtractedIncident, toolResults: ToolResult[]): Promise<SynthesisResult> {
   const glm = createGLMClientFromEnv();
   if (!glm) throw new Error("GLM Client missing");
 
@@ -169,11 +166,11 @@ export async function flightAgent(incident: ExtractedIncident): Promise<Workflow
   return { id: 'f-skip', agent: 'flight', description: 'Skip', status: 'skipped' };
 }
 
-export async function compensationAgent(incident: ExtractedIncident): Promise<WorkflowAction> {
+export async function compensationAgent(_incident: ExtractedIncident): Promise<WorkflowAction> {
   return { id: 'comp', agent: 'compensation', description: 'Check', status: 'skipped' };
 }
 
-export async function communicationAgent(_context: any, actions: WorkflowAction[]): Promise<WorkflowAction> {
+export async function communicationAgent(_context: any, _actions: WorkflowAction[]): Promise<WorkflowAction> {
   return { id: 'comm', agent: 'communication', description: 'Notify', status: 'completed', output: 'Recovery ready.' };
 }
 

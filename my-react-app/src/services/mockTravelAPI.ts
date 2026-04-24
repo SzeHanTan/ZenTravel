@@ -14,10 +14,13 @@ export interface FlightOffer {
   airline:      string;
   from:         string;
   to:           string;
-  departIn:     string;
+  departIn?:    string;
   cabin:        string;
   priceMYR:     number;
-  seatsLeft:    number;
+  seatsLeft?:   number;
+  timeDepart?:  string;
+  timeLanding?: string;
+  duration?:    string;
   recommended?: boolean;
   note?:        string;
 }
@@ -29,6 +32,28 @@ export interface HotelOffer {
   priceMYR:  number;
   amenity:   string;
   available: boolean;
+  recommended?: boolean;
+}
+
+export interface TransportOffer {
+  id: string;
+  name: string;
+  company: string;
+  imageUrl: string;
+  driverName?: string;
+  driverPhone?: string;
+  model?: string;
+  carType: string;
+  transmission?: string;
+  fuelType?: string;
+  plateNum: string;
+  price: number;
+  seats: number;
+  bags: number;
+  rentalDays?: number;
+  pickupLabel: string;
+  dropoffLabel: string;
+  summary: string;
   recommended?: boolean;
 }
 
@@ -58,9 +83,6 @@ const CITY_TO_IATA: Record<string, string> = {
   'kuala lumpur': 'KUL', 'kl': 'KUL', 'klia': 'KUL', 'kul': 'KUL',
   'mly': 'KUL', 'malaysia': 'KUL', 'msia': 'KUL', // 🚀 Added "mly" mapping
   'penang': 'PEN', 'pen': 'PEN',
-  'bali': 'DPS', 'denpasar': 'DPS', 'dps': 'DPS',
-  'london': 'LHR', 'lhr': 'LHR', 'heathrow': 'LHR',
-  'tokyo': 'NRT', 'narita': 'NRT', 'nrt': 'NRT',
   // Japan
   'tokyo': 'NRT', 'narita': 'NRT', 'nrt': 'NRT',
   'haneda': 'HND', 'hnd': 'HND',
@@ -70,7 +92,6 @@ const CITY_TO_IATA: Record<string, string> = {
   'singapore': 'SIN', 'sin': 'SIN',
   'bangkok': 'BKK', 'bkk': 'BKK', 'suvarnabhumi': 'BKK',
   'jakarta': 'CGK', 'cgk': 'CGK',
-  'bali': 'DPS', 'denpasar': 'DPS', 'dps': 'DPS',
   'manila': 'MNL', 'mnl': 'MNL',
   'ho chi minh': 'SGN', 'sgn': 'SGN', 'saigon': 'SGN',
   'hanoi': 'HAN', 'han': 'HAN',
@@ -180,30 +201,36 @@ const calculateArrival = (departTime: string, durationMins: number) => {
 };
 
 // --- Updated Search Function ---
-export async function searchFlights(fromRaw: string, toRaw: string, selectedClass: string) {
+export async function searchFlights(fromRaw: string, toRaw: string, selectedClassOrCount?: string | number): Promise<FlightOffer[]> {
   await new Promise((r) => setTimeout(r, 400));
   
   const from = toIATA(fromRaw);
   const to = toIATA(toRaw);
   const routeKey = `${from}-${to}`;
   const route = ROUTES[routeKey] ?? DEFAULT_ROUTE;
+  const selectedClass = typeof selectedClassOrCount === 'string' ? selectedClassOrCount : 'Economy';
+  const count = typeof selectedClassOrCount === 'number' ? selectedClassOrCount : route.airlines.length;
   
   // Varied departure times for a realistic list
   const startTimes = ["07:30", "11:15", "15:45", "22:10"];
   const durationStr = `${Math.floor(route.durationMins / 60)}h ${route.durationMins % 60}m`;
 
-  return route.airlines.map((al, i) => {
+  return route.airlines.slice(0, count).map((al, i) => {
     const depart = startTimes[i] || "09:00";
+    const seatsLeft = [9, 6, 3, 2][i] ?? 4;
     return {
       airline: al.name,
       flightNumber: `${al.code}${100 + i * 23}`,
       from,
       to,
+      departIn: `+${3 + i * 2}h`,
       timeDepart: depart,
       timeLanding: calculateArrival(depart, route.durationMins),
       duration: durationStr,
       priceMYR: Math.round(route.basePriceMYR * (1 + i * 0.15)),
       cabin: selectedClass,
+      seatsLeft,
+      note: i === 0 ? 'Best overall option' : i === 1 ? 'Balanced fare' : 'Alternative choice',
       recommended: i === 0
     };
   });
@@ -333,6 +360,35 @@ const DEFAULT_HOTELS: HotelOffer[] = [
   { name: 'Novotel Airport Hotel',   stars: 4, distance: '10-min free bus', priceMYR: 490, amenity: 'Pool, gym, free cancellation', available: true },
 ];
 
+const TRANSPORT_COMPANIES = [
+  {
+    name: 'Grab',
+    company: 'https://logo.clearbit.com/grab.com',
+    imageUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    name: 'AirAsia Ride',
+    company: 'https://logo.clearbit.com/airasia.com',
+    imageUrl: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    name: 'Klook Transfer',
+    company: 'https://logo.clearbit.com/klook.com',
+    imageUrl: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    name: 'Traveloka Cars',
+    company: 'https://logo.clearbit.com/traveloka.com',
+    imageUrl: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=900&q=80',
+  },
+];
+
+const TRANSPORT_PROFILES = [
+  { carType: 'sedan car', seats: 4, bags: 2, basePrice: 70, platePrefix: 'PJN' },
+  { carType: 'mpv', seats: 6, bags: 4, basePrice: 110, platePrefix: 'VKL' },
+  { carType: 'premium suv', seats: 5, bags: 3, basePrice: 165, platePrefix: 'WXX' },
+];
+
 // ─── Compensation rules ────────────────────────────────────────────────────────
 
 const COMPENSATION: Record<string, CompensationResult> = {
@@ -382,6 +438,79 @@ export async function searchHotels(airportRaw: string): Promise<HotelOffer[]> {
   return AIRPORT_HOTELS[code] ?? DEFAULT_HOTELS;
 }
 
+export async function searchTransportOffers(params: {
+  mode: 'rental' | 'pickup' | 'dropoff';
+  location: string;
+  startDate?: string;
+  endDate?: string;
+  rentalDays?: number;
+  pickupPoint?: string;
+  destination?: string;
+  flightNum?: string;
+}): Promise<TransportOffer[]> {
+  await new Promise((r) => setTimeout(r, 250));
+
+  const normalizedLocation = params.location.trim() || 'Kuala Lumpur';
+  const pickupLabel =
+    params.mode === 'dropoff'
+      ? (params.pickupPoint?.trim() || 'City Centre Pick-up')
+      : params.mode === 'pickup'
+        ? `${normalizedLocation} Airport`
+        : `${normalizedLocation} Pick-up Hub`;
+
+  const dropoffLabel =
+    params.mode === 'pickup'
+      ? (params.destination?.trim() || `${normalizedLocation} City Centre`)
+      : params.mode === 'dropoff'
+        ? `${normalizedLocation} Airport`
+        : `${normalizedLocation} Return Hub`;
+
+  const rentalDays = Math.max(1, params.rentalDays ?? 1);
+
+  return TRANSPORT_COMPANIES.slice(0, 3).map((companyInfo, index) => {
+    const profile = TRANSPORT_PROFILES[index % TRANSPORT_PROFILES.length];
+    const routeFactor = normalizedLocation.length % 7;
+    const modeFactor = params.mode === 'rental' ? 1.25 : params.mode === 'pickup' ? 1 : 1.1;
+    const basePrice = Math.round((profile.basePrice + routeFactor * 6 + index * 12) * modeFactor);
+    const price = params.mode === 'rental' ? basePrice * rentalDays : basePrice;
+    const model =
+      index === 0 ? 'Perodua Bezza 1.3 AV'
+      : index === 1 ? 'Toyota Innova 2.0 G'
+      : 'Honda CR-V 1.5 TC';
+    const transmission = index === 0 ? 'Automatic' : 'Automatic';
+    const fuelType = index === 2 ? 'Petrol Turbo' : 'Petrol';
+    const driverName = index === 0 ? 'Aiman' : index === 1 ? 'Farah' : 'Daniel';
+    const driverPhone = `+60 12-88${index + 2} ${6500 + index * 37}`;
+
+    return {
+      id: `${params.mode}-${index + 1}`,
+      name: companyInfo.name,
+      company: companyInfo.company,
+      imageUrl: companyInfo.imageUrl,
+      driverName,
+      driverPhone,
+      model,
+      carType: profile.carType,
+      transmission,
+      fuelType,
+      plateNum: `${profile.platePrefix} ${6500 + index * 37}`,
+      price,
+      seats: profile.seats,
+      bags: profile.bags,
+      rentalDays: params.mode === 'rental' ? rentalDays : undefined,
+      pickupLabel,
+      dropoffLabel,
+      summary:
+        params.mode === 'rental'
+          ? `${profile.carType} for self-drive travel around ${normalizedLocation}, priced for ${rentalDays} day${rentalDays > 1 ? 's' : ''}.`
+          : params.mode === 'pickup'
+            ? `Airport meet-and-greet${params.flightNum ? ` for ${params.flightNum.toUpperCase()}` : ''} with direct transfer to your destination.`
+            : `Private transfer from ${pickupLabel} to ${dropoffLabel}.`,
+      recommended: index === 0,
+    };
+  });
+}
+
 export async function checkCompensation(disruptionType: string): Promise<CompensationResult> {
   await new Promise((r) => setTimeout(r, 100));
   return (
@@ -404,7 +533,9 @@ export async function executeTool(call: ToolCallPlan): Promise<ToolResult> {
         result: await searchFlights(
           String(call.params.from ?? call.params.origin ?? ''),
           String(call.params.to   ?? call.params.destination ?? ''),
-          Number(call.params.count ?? 3),
+          typeof call.params.class === 'string'
+            ? String(call.params.class)
+            : Number(call.params.count ?? 3),
         ),
       };
     case 'search_hotels':
