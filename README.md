@@ -1,6 +1,6 @@
 <!-- App Logo -->
 <div align="center">
-  <img src="src/assets/zentravel_logo.png" alt="MediSafe Logo" width="120"/>
+  <img src="assets/zentravel_logo.png" alt="MediSafe Logo" width="120"/>
 </div>
 
 <div align="center">
@@ -15,8 +15,10 @@
 ![GLM](https://img.shields.io/badge/AI-GLM--5.1-red?style=for-the-badge&logo=google-gemini)
 
 *Your intelligent companion for navigating travel disruptions and orchestrating stress-free journeys.*
+</div>
 
----
+* * * 
+
 
 ## 🌟 Overview
 
