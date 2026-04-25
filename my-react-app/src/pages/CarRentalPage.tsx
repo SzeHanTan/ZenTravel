@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { 
   ArrowLeft, Calendar, User, X, MapPin,
-  PlaneTakeoff, Loader2, CarFront, Briefcase, BadgeCheck, Gauge, Fuel, Cog
+  PlaneTakeoff, Loader2, CarFront, Briefcase, BadgeCheck, Gauge, Fuel, Cog, Star
 } from 'lucide-react';
-import { addDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, query, setDoc, where } from 'firebase/firestore';
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import { auth, db } from '../services/firebase';
 import { searchTransportOffers, toIATA, type TransportOffer } from '../services/mockTravelAPI';
@@ -19,6 +19,12 @@ const AIRPORT_MAP_CENTERS: Record<string, { lat: number; lng: number }> = {
   ICN: { lat: 37.4602, lng: 126.4407 },
   LHR: { lat: 51.4700, lng: -0.4543 },
 };
+
+const slugifyUsername = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'guest';
 
 export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => {
   // --- UI Navigation State ---
@@ -129,6 +135,49 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
     });
   };
 
+  const parseBookingDate = (value?: string) => {
+    if (!value) return null;
+
+    const directDate = new Date(value);
+    if (!Number.isNaN(directDate.getTime())) {
+      directDate.setHours(0, 0, 0, 0);
+      return directDate;
+    }
+
+    const normalized = value
+      .replace(/\//g, ' ')
+      .replace(/,/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const parts = normalized.split(' ');
+    if (parts.length !== 3) return null;
+
+    const [dayRaw, monthRaw, yearRaw] = parts;
+    const monthMap: Record<string, number> = {
+      jan: 0,
+      feb: 1,
+      mar: 2,
+      apr: 3,
+      may: 4,
+      jun: 5,
+      jul: 6,
+      aug: 7,
+      sep: 8,
+      oct: 9,
+      nov: 10,
+      dec: 11,
+    };
+
+    const day = Number(dayRaw);
+    const year = Number(yearRaw);
+    const month = monthMap[monthRaw.slice(0, 3).toLowerCase()];
+    if (Number.isNaN(day) || Number.isNaN(year) || month === undefined) return null;
+
+    const parsed = new Date(year, month, day);
+    parsed.setHours(0, 0, 0, 0);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   const calculateRentalDays = () => {
     const start = new Date(dates.start);
     const end = new Date(dates.end);
@@ -137,11 +186,27 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
     return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   };
 
-  const selectedFlightBooking = bookedFlights.find((flight) => flight.flightNum === flightNum);
+  const activeBookedFlights = bookedFlights.filter((flight) => {
+    const status = String(flight.status || '').toLowerCase();
+    if (status === 'cancelled' || status === 'expired') {
+      return false;
+    }
+
+    const bookingDate = parseBookingDate(flight.date);
+    if (!bookingDate) {
+      return true;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return bookingDate >= today;
+  });
+
+  const selectedFlightBooking = activeBookedFlights.find((flight) => flight.flightNum === flightNum);
 
   const handleFlightSelect = (selectedValue: string) => {
     setFlightNum(selectedValue);
-    const selectedBooking = bookedFlights.find((flight) => flight.flightNum === selectedValue);
+    const selectedBooking = activeBookedFlights.find((flight) => flight.flightNum === selectedValue);
     if (!selectedBooking) return;
 
     if (transferType === 'Pick-up' && selectedBooking.to) {
@@ -179,10 +244,10 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
   };
 
   useEffect(() => {
-    if (transferType !== 'Drop-off' || bookedFlights.length === 0) return;
+    if (transferType !== 'Drop-off' || activeBookedFlights.length === 0) return;
     if (flightNum) return;
 
-    const datedFlights = [...bookedFlights].sort((a, b) => {
+    const datedFlights = [...activeBookedFlights].sort((a, b) => {
       const aTime = new Date(a.date || '').getTime();
       const bTime = new Date(b.date || '').getTime();
       return bTime - aTime;
@@ -203,7 +268,7 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
         setDates({ start: preferredFlight.date, end: preferredFlight.date });
       }
     }
-  }, [transferType, bookedFlights, flightNum]);
+  }, [transferType, activeBookedFlights, flightNum]);
 
   const handleMapClick = (event: google.maps.MapMouseEvent) => {
     if (!event.latLng) return;
@@ -269,10 +334,53 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
       sessionUser.displayName?.trim() ||
       sessionUser.email?.split('@')[0] ||
       'Guest';
+    const usernameSlug = slugifyUsername(
+      sessionUser.displayName?.trim() ||
+      sessionUser.email?.split('@')[0] ||
+      'guest'
+    );
     const bookingDate = formatDisplayDate(dates.start) || '23 Apr 2026';
+    const transportPickupPoint =
+      mainTab === 'Rentals'
+        ? offer.pickupLabel
+        : transferType === 'Pick-up'
+          ? (selectedFlightBooking?.to || location || offer.pickupLabel)
+          : (pickupPoint || offer.pickupLabel);
+    const transportDestination =
+      mainTab === 'Rentals'
+        ? offer.dropoffLabel
+        : transferType === 'Pick-up'
+          ? (transferDest || offer.dropoffLabel)
+          : (selectedFlightBooking?.from || location || offer.dropoffLabel);
+    const transportDistance = offer.routeDistance || (mainTab === 'Rentals' ? '' : '12-15 km');
 
     try {
-      await addDoc(collection(db, 'Booking'), {
+      const existingTransportQuery = query(
+        collection(db, 'Booking'),
+        where('userId', '==', userId),
+        where('type', '==', 'transport')
+      );
+      const existingTransportSnap = await getDocs(existingTransportQuery);
+      const nextSequence =
+        existingTransportSnap.docs.reduce((highest, bookingDoc) => {
+          const match = bookingDoc.id.match(/^car_[a-z0-9_]+_(\d+)$/i);
+          if (!match) return highest;
+          return Math.max(highest, Number(match[1]));
+        }, 0) + 1;
+
+      let resolvedSequence = nextSequence;
+      let documentId = `car_${usernameSlug}_${String(resolvedSequence).padStart(3, '0')}`;
+      let bookingRef = doc(db, 'Booking', documentId);
+      let bookingSnap = await getDoc(bookingRef);
+
+      while (bookingSnap.exists()) {
+        resolvedSequence += 1;
+        documentId = `car_${usernameSlug}_${String(resolvedSequence).padStart(3, '0')}`;
+        bookingRef = doc(db, 'Booking', documentId);
+        bookingSnap = await getDoc(bookingRef);
+      }
+
+      await setDoc(bookingRef, {
         bookingNum: `TP${Math.floor(1000 + Math.random() * 9000)}`,
         carType: offer.model ? `${offer.model} (${offer.carType})` : offer.carType,
         company: offer.company,
@@ -285,7 +393,16 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
         passenger: passengerName,
         plateNum: offer.plateNum,
         price: offer.price,
+        pickupPoint: transportPickupPoint,
+        destination: transportDestination,
+        distance: transportDistance,
         status: 'upcoming',
+        transportMode:
+          mainTab === 'Rentals'
+            ? 'rental'
+            : transferType === 'Pick-up'
+              ? 'pickup'
+              : 'dropoff',
         type: 'transport',
         userId,
       });
@@ -373,6 +490,16 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
                       <span><Fuel size={15} /> {offer.fuelType}</span>
                     )}
                   </div>
+
+                  {mainTab !== 'Rentals' && (
+                    <div className="transport-transfer-highlights">
+                      <span>
+                        <MapPin size={15} />
+                        {offer.routeDistance ?? (transferType === 'Pick-up' ? '12-15 km from airport' : '12-15 km to airport')}
+                      </span>
+                      <span><Star size={15} /> Driver rating {offer.driverRating?.toFixed(1) ?? '4.8'}</span>
+                    </div>
+                  )}
 
                   <div className="transport-route-box">
                     <div>
@@ -559,9 +686,9 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
                         onChange={(e) => handleFlightSelect(e.target.value)}
                       >
                         <option value="">
-                          {bookedFlights.length > 0 ? 'Select a booked flight' : 'No booked flights found'}
+                          {activeBookedFlights.length > 0 ? 'Select a booked flight' : 'No active booked flights found'}
                         </option>
-                        {bookedFlights.map((flight) => (
+                        {activeBookedFlights.map((flight) => (
                           <option key={flight.id} value={flight.flightNum}>
                             {flight.flightNum} - {flight.from} to {flight.to} ({flight.date || 'Booked flight'})
                           </option>
@@ -645,9 +772,9 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
                         onChange={(e) => handleFlightSelect(e.target.value)}
                       >
                         <option value="">
-                          {bookedFlights.length > 0 ? 'Select a booked return flight' : 'No booked flights found'}
+                          {activeBookedFlights.length > 0 ? 'Select a booked return flight' : 'No active booked flights found'}
                         </option>
-                        {bookedFlights.map((flight) => (
+                        {activeBookedFlights.map((flight) => (
                           <option key={flight.id} value={flight.flightNum}>
                             {flight.flightNum} - {flight.from} to {flight.to} ({flight.date || 'Booked flight'})
                           </option>

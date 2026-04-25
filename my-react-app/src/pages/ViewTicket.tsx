@@ -85,6 +85,23 @@ export const ViewTicket = ({ ticketId, setView }: ViewTicketProps) => {
           )}
         </div>
 
+        {isTransport && (
+          <div className="vt-transport-route">
+            <div className="vt-transport-route-item">
+              <label>Pick-up Point</label>
+              <span>{ticket.pickupPoint || 'Shared before trip'}</span>
+            </div>
+            <div className="vt-transport-route-item">
+              <label>Destination</label>
+              <span>{ticket.destination || 'Shared before trip'}</span>
+            </div>
+            <div className="vt-transport-route-item">
+              <label>Distance</label>
+              <span>{ticket.distance || 'Route estimate pending'}</span>
+            </div>
+          </div>
+        )}
+
         <div className="vt-card">
           <div className="vt-card-row">
             <div className="vt-loc">

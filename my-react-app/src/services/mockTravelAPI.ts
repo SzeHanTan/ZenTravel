@@ -37,10 +37,12 @@ export interface TransportOffer {
   imageUrl: string;
   driverName?: string;
   driverPhone?: string;
+  driverRating?: number;
   model?: string;
   carType: string;
   transmission?: string;
   fuelType?: string;
+  routeDistance?: string;
   plateNum: string;
   price: number;
   seats: number;
@@ -359,6 +361,12 @@ export async function searchTransportOffers(params: {
     const fuelType = index === 2 ? 'Petrol Turbo' : 'Petrol';
     const driverName = index === 0 ? 'Aiman' : index === 1 ? 'Farah' : 'Daniel';
     const driverPhone = `+60 12-88${index + 2} ${6500 + index * 37}`;
+    const driverRating = Number((4.6 + index * 0.15).toFixed(1));
+    const routeDistanceKm = 8 + routeFactor * 3 + index * 4;
+    const routeDistance =
+      params.mode === 'rental'
+        ? undefined
+        : `${routeDistanceKm}-${routeDistanceKm + 3} km from airport`;
 
     return {
       id: `${params.mode}-${index + 1}`,
@@ -367,10 +375,12 @@ export async function searchTransportOffers(params: {
       imageUrl: companyInfo.imageUrl,
       driverName,
       driverPhone,
+      driverRating,
       model,
       carType: profile.carType,
       transmission,
       fuelType,
+      routeDistance,
       plateNum: `${profile.platePrefix} ${6500 + index * 37}`,
       price,
       seats: profile.seats,

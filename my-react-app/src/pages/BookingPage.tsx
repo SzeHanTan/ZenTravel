@@ -11,6 +11,13 @@ export const BookingPage = ({ setView, globalLang }: { setView: (view: any, id?:
   const [bookings, setBookings] = useState<any[]>([]);
   const t = translations[globalLang || 'en']; 
 
+  const getTransportTitle = (item: any) => {
+    if (item.transportMode === 'pickup') return 'Airport Pick-up';
+    if (item.transportMode === 'dropoff') return 'Airport Drop-off';
+    if (item.transportMode === 'rental') return 'Car Rental';
+    return item.name || item.hotelName || 'Transport';
+  };
+
   // Firebase Timestamp 安全转换逻辑
   const safeDate = (val: any) => {
     if (!val) return "";
@@ -21,6 +28,52 @@ export const BookingPage = ({ setView, globalLang }: { setView: (view: any, id?:
         year: 'numeric'
       });
     }
+    return String(val);
+  };
+
+  const safeSlashDate = (val: any) => {
+    if (!val) return "";
+
+    if (typeof val === 'object' && val.seconds) {
+      return new Date(val.seconds * 1000).toLocaleDateString('en-GB');
+    }
+
+    if (typeof val === 'string') {
+      const directDate = new Date(val);
+      if (!Number.isNaN(directDate.getTime())) {
+        return directDate.toLocaleDateString('en-GB');
+      }
+
+      const normalized = val
+        .replace(/,/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const parts = normalized.split(' ');
+      if (parts.length === 3) {
+        const [dayRaw, monthRaw, yearRaw] = parts;
+        const monthMap: Record<string, number> = {
+          jan: 0,
+          feb: 1,
+          mar: 2,
+          apr: 3,
+          may: 4,
+          jun: 5,
+          jul: 6,
+          aug: 7,
+          sep: 8,
+          oct: 9,
+          nov: 10,
+          dec: 11,
+        };
+        const day = Number(dayRaw);
+        const year = Number(yearRaw);
+        const month = monthMap[monthRaw.slice(0, 3).toLowerCase()];
+        if (!Number.isNaN(day) && !Number.isNaN(year) && month !== undefined) {
+          return new Date(year, month, day).toLocaleDateString('en-GB');
+        }
+      }
+    }
+
     return String(val);
   };
 
@@ -108,10 +161,14 @@ export const BookingPage = ({ setView, globalLang }: { setView: (view: any, id?:
                       <img src={item.imageUrl || mascotImg} alt="item" className="zen-item-thumb" />
                       <div className="zen-item-details">
                         <div className="zen-detail-header">
-                          <h4 className="zen-item-name">{item.name || item.hotelName}</h4>
+                          <h4 className="zen-item-name">
+                            {isTransport ? getTransportTitle(item) : (item.name || item.hotelName)}
+                          </h4>
                           <span className="zen-booking-no">{item.bookingNum || item.bookNum}</span>
                         </div>
-                        <p className="zen-date-normal">{safeDate(item.date)}</p>
+                        <p className="zen-date-normal">
+                          {isTransport ? safeSlashDate(item.date) : safeDate(item.date)}
+                        </p>
                         <p className="zen-description">
                           {item.type === 'transport' ? item.plateNum : item.details}
                         </p>
