@@ -1,4 +1,63 @@
 // Ensure you have VITE_RAPIDAPI_KEY set in your .env file
+
+interface RapidAPIRegion {
+  type: string;
+  gaiaId?: string | number;
+  regionId?: string | number;
+  regionNames?: {
+    fullName: string;
+  };
+  name?: string;
+}
+
+interface RapidAPIHotel {
+  name: string;
+  price?: {
+    priceSummary?: {
+      displayPrices?: Array<{ value: string }>;
+    };
+    lead?: {
+      amount: number | string;
+    };
+  };
+  ratePlan?: {
+    price?: {
+      current: string;
+    };
+  };
+  optimizedPrice?: {
+    displayPrice: string;
+  };
+  propertyImage?: {
+    image?: {
+      url: string;
+    };
+    url?: string;
+  };
+  mediaSection?: {
+    media?: Array<{ url: string }>;
+  };
+  optimizedThumbUrls?: {
+    srpDesktop: string;
+  };
+  thumbnailUrl?: string;
+  neighborhood?: {
+    name: string;
+  };
+  address?: {
+    locality: string;
+  };
+  guestRating?: {
+    rating: number | string;
+  };
+  guestReviews?: {
+    rating: number | string;
+  };
+  starRating?: number | string;
+  short_amenities?: string[];
+  amenities?: Array<{ description: string }>;
+}
+
 export const getHotelsFromRapidAPI = async (
   destination: string,
   checkIn: string,
@@ -35,7 +94,7 @@ export const getHotelsFromRapidAPI = async (
     const regData = await regResponse.json();
 
     // Support both response shapes: { sr: [...] } and { data: [...] }
-    const regionList: any[] = regData.sr || regData.data || (Array.isArray(regData) ? regData : []);
+    const regionList: RapidAPIRegion[] = regData.sr || regData.data || (Array.isArray(regData) ? regData : []);
 
     console.log(`[RapidAPI] v2/regions raw keys:`, Object.keys(regData));
     console.log(`[RapidAPI] Region list length: ${regionList.length}`);
@@ -46,7 +105,7 @@ export const getHotelsFromRapidAPI = async (
 
     // Prefer CITY or NEIGHBORHOOD; fallback to first result
     const searchableRegion =
-      regionList.find((r: any) => r.type === 'CITY' || r.type === 'NEIGHBORHOOD') ||
+      regionList.find((r: RapidAPIRegion) => r.type === 'CITY' || r.type === 'NEIGHBORHOOD') ||
       regionList[0];
 
     // gaiaId is the correct field; some responses also have regionId
@@ -122,7 +181,7 @@ export const getHotelsFromRapidAPI = async (
     const searchData = await searchResponse.json();
 
     // Support both v3 and v2 response shapes
-    const results: any[] =
+    const results: RapidAPIHotel[] =
       searchData.data?.propertySearch?.properties ||
       searchData.data?.properties ||
       searchData.data?.body?.searchResults?.results ||
@@ -135,7 +194,7 @@ export const getHotelsFromRapidAPI = async (
     }
 
     // ── Step 3: Transform to ZenTravel schema ─────────────────────────────────
-    return results.slice(0, 15).map((h: any, index: number) => {
+    return results.slice(0, 15).map((h: RapidAPIHotel, index: number) => {
       const priceStr =
         h.price?.priceSummary?.displayPrices?.[0]?.value ||
         h.price?.lead?.amount?.toString() ||
@@ -172,7 +231,7 @@ export const getHotelsFromRapidAPI = async (
           : 'Comfortable stay in a prime location.',
         amenities:
           h.short_amenities ||
-          h.amenities?.map((a: any) => a.description) ||
+          h.amenities?.map((a: { description: string }) => a.description) ||
           ['Free WiFi', 'Air Conditioning', 'Housekeeping'],
         imageUrl,
         image_keyword: destination,
