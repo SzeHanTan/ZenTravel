@@ -159,7 +159,7 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({ setView, glo
                       <div className="alt-info">
                         <h4>{item.name || item.airline}</h4>
                         <p>{item.type || item.stars + ' ★'} · {item.note || item.distance}</p>
-                        <span className="alt-price">MYR {item.priceMYR}{analysisTarget.bookingType === 'hotel' ? '/night' : ''}</span>
+                        <span className="alt-price">{symbol} {item.priceMYR}</span>
                       </div>
                       <ChevronRight size={18} color="#ccc" />
                     </div>

@@ -9,8 +9,7 @@ interface Hotel {
   rating: string;
   description: string;
   amenities: string[];
-  image_keyword?: string;
-  imageUrl?: string;
+  image_keyword: string;
   isRecommended?: boolean;
 }
 
@@ -25,31 +24,6 @@ interface ResultsProps {
 export const HotelResultsPage: React.FC<ResultsProps> = ({ 
   hotels, destination, searchMeta, onBack, onBook 
 }) => {
-  const [maxPrice, setMaxPrice] = React.useState<number>(10000);
-  
-  // Extract numeric prices for filtering
-  const getNumericPrice = (priceStr: string) => {
-    const match = priceStr.match(/([0-9,.]+)/);
-    return match ? parseFloat(match[1].replace(/,/g, '')) : 0;
-  };
-
-  // Determine actual max price from data to set slider range
-  const prices = hotels.map(h => getNumericPrice(h.price)).filter(p => p > 0);
-  const dataMaxPrice = prices.length > 0 ? Math.max(...prices) : 5000;
-  const dataMinPrice = prices.length > 0 ? Math.min(...prices) : 0;
-
-  // Sync maxPrice state if it's currently at default and we have data
-  React.useEffect(() => {
-    if (dataMaxPrice > 0 && maxPrice === 10000) {
-      setMaxPrice(dataMaxPrice);
-    }
-  }, [dataMaxPrice]);
-
-  const filteredHotels = hotels.filter(h => {
-    const p = getNumericPrice(h.price);
-    return p === 0 || p <= maxPrice;
-  });
-
   return (
     <div className="zen-results-wrapper fade-in">
       {/* 1. PREMIUM HEADER */}
@@ -69,36 +43,15 @@ export const HotelResultsPage: React.FC<ResultsProps> = ({
         </div>
       </header>
 
-      {/* PRICE FILTER SECTION */}
-      <div className="zen-filter-bar">
-        <div className="filter-header">
-          <span className="filter-title">Filter by Price</span>
-          <span className="filter-value">Up to MYR {maxPrice}</span>
-        </div>
-        <input 
-          type="range" 
-          min={dataMinPrice} 
-          max={dataMaxPrice} 
-          step={50}
-          value={maxPrice} 
-          onChange={(e) => setMaxPrice(parseInt(e.target.value))}
-          className="zen-price-slider"
-        />
-        <div className="filter-range-labels">
-          <span>MYR {dataMinPrice}</span>
-          <span>MYR {dataMaxPrice}</span>
-        </div>
-      </div>
-
       {/* 2. MAIN RESULTS FEED */}
       <main className="zen-results-container">
-        {filteredHotels.length > 0 ? (
-          filteredHotels.map((h, i) => (
+        {hotels.length > 0 ? (
+          hotels.map((h, i) => (
             <div key={i} className="luxury-hotel-card fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
               {/* Media Section */}
               <div className="luxury-card-media">
                 <img 
-                  src={h.imageUrl || `https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80&sig=${h.image_keyword}`} 
+                  src={`https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80&sig=${h.image_keyword}`} 
                   alt={h.name} 
                 />
                 <div className="luxury-rating-badge">
@@ -135,8 +88,9 @@ export const HotelResultsPage: React.FC<ResultsProps> = ({
                 {/* Footer Section */}
                 <div className="luxury-card-footer">
                   <div className="price-stack">
+                    <span className="currency-label">{h.price.split(' ')[0]}</span>
                     <div className="price-row">
-                       <span className="price-big">{h.price.startsWith('MYR') ? h.price : `MYR ${h.price}`}</span>
+                       <span className="price-big">{h.price.split(' ')[1]}</span>
                        <span className="price-per">/night</span>
                     </div>
                   </div>

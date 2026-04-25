@@ -122,7 +122,7 @@ export const SavedPage = ({ setView, globalCurrency }: SavedPageProps) => {
                       <MapPin size={14} /> {item.location}
                     </p>
                     <span className="hotel-price-tag">
-                      MYR {convertedPrice} <small>/night</small>
+                      {symbol} {convertedPrice} <small>/night</small>
                     </span>
                   </div>
                 </div>
