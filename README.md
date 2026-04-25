@@ -70,6 +70,12 @@ npm run dev
 |**📧 Delivery** |	EmailJS (recovery plan dispatch) |
 |**🗺️ Maps & Location** |	Google Maps SDK (@react-google-maps/api) |
 
+### System architecture
+
+High-level view of the ZenTravel app (Vite + React SPA), vision service, agents layer, and external services.
+
+![ZenTravel system architecture](<System Architecture Diagram ZenTravel.drawio (1).png>)
+
 ---
 
 ### 🧩 Core Architecture Patterns 
