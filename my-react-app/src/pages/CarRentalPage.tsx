@@ -3,7 +3,7 @@ import {
   ArrowLeft, Calendar, User, X, MapPin,
   PlaneTakeoff, Loader2, CarFront, Briefcase, BadgeCheck, Gauge, Fuel, Cog, Star
 } from 'lucide-react';
-import { collection, doc, onSnapshot, query, runTransaction, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, query, setDoc, where } from 'firebase/firestore';
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import { auth, db } from '../services/firebase';
 import { searchTransportOffers, toIATA, type TransportOffer } from '../services/mockTravelAPI';
@@ -33,8 +33,8 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
   const [viewMode, setViewMode] = useState<'search' | 'results'>('search');
   const [loading, setLoading] = useState(false);
   const [transportOffers, setTransportOffers] = useState<TransportOffer[]>([]);
-  const [bookedFlights, setBookedFlights] = useState<any[]>([]);
-  const [bookedHotels, setBookedHotels] = useState<any[]>([]);
+  const [bookedFlights, setBookedFlights] = useState<Record<string, unknown>[]>([]);
+  const [bookedHotels, setBookedHotels] = useState<Record<string, unknown>[]>([]);
   
   // --- Form Data States ---
   const [location, setLocation] = useState("Kuala Lumpur");
@@ -56,7 +56,7 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
 
   const featureOptions = ['Child Seat', 'GPS', 'Bluetooth', 'Large Boot'];
   const { isLoaded: isMapLoaded } = useJsApiLoader({
-    id: 'car-rental-map',
+    id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
   });
 
@@ -255,18 +255,20 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
 
     const preferredFlight = datedFlights[0];
     if (preferredFlight?.flightNum) {
-      setFlightNum(preferredFlight.flightNum);
-      if (preferredFlight.from) {
-        setLocation(preferredFlight.from);
-        setPinLocation(
-          AIRPORT_MAP_CENTERS[preferredFlight.from] ??
-          AIRPORT_MAP_CENTERS[toIATA(preferredFlight.from)] ??
-          null
-        );
-      }
-      if (preferredFlight.date) {
-        setDates({ start: preferredFlight.date, end: preferredFlight.date });
-      }
+      setTimeout(() => {
+        setFlightNum(preferredFlight.flightNum as string);
+        if (preferredFlight.from) {
+          setLocation(preferredFlight.from as string);
+          setPinLocation(
+            AIRPORT_MAP_CENTERS[preferredFlight.from as string] ??
+            AIRPORT_MAP_CENTERS[toIATA(preferredFlight.from as string)] ??
+            null
+          );
+        }
+        if (preferredFlight.date) {
+          setDates({ start: preferredFlight.date as string, end: preferredFlight.date as string });
+        }
+      }, 0);
     }
   }, [transferType, activeBookedFlights, flightNum]);
 
@@ -355,44 +357,57 @@ export const CarRentalPage = ({ setView }: { setView: (v: string) => void }) => 
     const transportDistance = offer.routeDistance || (mainTab === 'Rentals' ? '' : '12-15 km');
 
     try {
-      await runTransaction(db, async (transaction) => {
-        const counterRef = doc(db, 'BookingCounters', `transport_${userId}`);
-        const counterSnap = await transaction.get(counterRef);
-        const nextSequence = counterSnap.exists()
-          ? Number(counterSnap.data().nextSequence ?? 1)
-          : 1;
+      const existingTransportQuery = query(
+        collection(db, 'Booking'),
+        where('userId', '==', userId),
+        where('type', '==', 'transport')
+      );
+      const existingTransportSnap = await getDocs(existingTransportQuery);
+      const nextSequence =
+        existingTransportSnap.docs.reduce((highest, bookingDoc) => {
+          const match = bookingDoc.id.match(/^car_[a-z0-9_]+_(\d+)$/i);
+          if (!match) return highest;
+          return Math.max(highest, Number(match[1]));
+        }, 0) + 1;
 
-        transaction.set(counterRef, { nextSequence: nextSequence + 1 }, { merge: true });
+      let resolvedSequence = nextSequence;
+      let documentId = `car_${usernameSlug}_${String(resolvedSequence).padStart(3, '0')}`;
+      let bookingRef = doc(db, 'Booking', documentId);
+      let bookingSnap = await getDoc(bookingRef);
 
-        const documentId = `car_${usernameSlug}_${String(nextSequence).padStart(3, '0')}`;
-        const bookingRef = doc(db, 'Booking', documentId);
+      while (bookingSnap.exists()) {
+        resolvedSequence += 1;
+        documentId = `car_${usernameSlug}_${String(resolvedSequence).padStart(3, '0')}`;
+        bookingRef = doc(db, 'Booking', documentId);
+        bookingSnap = await getDoc(bookingRef);
+      }
 
-        transaction.set(bookingRef, {
-          bookingNum: `TP${Math.floor(1000 + Math.random() * 9000)}`,
-          carType: offer.model ? `${offer.model} (${offer.carType})` : offer.carType,
-          company: offer.company,
-          date: bookingDate,
-          driverName: offer.driverName,
-          driverPhone: offer.driverPhone,
-          hasNotification: true,
-          imageUrl: offer.imageUrl,
-          name: mainTab === 'Rentals' ? (offer.model ?? offer.name) : offer.name,
-          passenger: passengerName,
-          plateNum: offer.plateNum,
-          price: offer.price,
-          pickupPoint: transportPickupPoint,
-          destination: transportDestination,
-          distance: transportDistance,
-          status: 'upcoming',
-          transportMode:
-            mainTab === 'Rentals'
-              ? 'rental'
-              : transferType === 'Pick-up'
-                ? 'pickup'
-                : 'dropoff',
-          type: 'transport',
-          userId,
-        });
+      await setDoc(bookingRef, {
+        // eslint-disable-next-line react-hooks/purity
+        bookingNum: `TP${Math.floor(1000 + Math.random() * 9000)}`,
+        carType: offer.model ? `${offer.model} (${offer.carType})` : offer.carType,
+        company: offer.company,
+        date: bookingDate,
+        driverName: offer.driverName,
+        driverPhone: offer.driverPhone,
+        hasNotification: true,
+        imageUrl: offer.imageUrl,
+        name: mainTab === 'Rentals' ? (offer.model ?? offer.name) : offer.name,
+        passenger: passengerName,
+        plateNum: offer.plateNum,
+        price: offer.price,
+        pickupPoint: transportPickupPoint,
+        destination: transportDestination,
+        distance: transportDistance,
+        status: 'upcoming',
+        transportMode:
+          mainTab === 'Rentals'
+            ? 'rental'
+            : transferType === 'Pick-up'
+              ? 'pickup'
+              : 'dropoff',
+        type: 'transport',
+        userId,
       });
       alert(`Booked ${offer.name} successfully.`);
       setView('booking');

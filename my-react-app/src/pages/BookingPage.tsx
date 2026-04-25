@@ -6,28 +6,74 @@ import mascotImg from '../assets/MASCOT.png';
 import { translations } from '../utils/translations'; 
 import '../styles/BookingPage.css';
 
-export const BookingPage = ({ setView, globalLang }: { setView: (view: any, id?: string) => void; globalLang: string }) => {
+export const BookingPage = ({ setView, globalLang }: { setView: (view: string, id?: string) => void; globalLang: string }) => {
   const [activeTab, setActiveTab] = useState('upcoming');
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<Record<string, unknown>[]>([]);
   const t = translations[globalLang || 'en']; 
 
-  const getTransportTitle = (item: any) => {
+  const getTransportTitle = (item: Record<string, unknown>) => {
     if (item.transportMode === 'pickup') return 'Airport Pick-up';
     if (item.transportMode === 'dropoff') return 'Airport Drop-off';
     if (item.transportMode === 'rental') return 'Car Rental';
-    return item.name || item.hotelName || 'Transport';
+    return (item.name as string) || (item.hotelName as string) || 'Transport';
   };
 
   // Firebase Timestamp 安全转换逻辑
-  const safeDate = (val: any) => {
+  const safeDate = (val: string | number | { seconds: number }) => {
     if (!val) return "";
-    if (typeof val === 'object' && val.seconds) {
+    if (typeof val === 'object' && 'seconds' in val) {
       return new Date(val.seconds * 1000).toLocaleDateString('en-GB', {
         day: '2-digit',
         month: 'short',
         year: 'numeric'
       });
     }
+    return String(val);
+  };
+
+  const safeSlashDate = (val: string | number | { seconds: number }) => {
+    if (!val) return "";
+
+    if (typeof val === 'object' && val.seconds) {
+      return new Date(val.seconds * 1000).toLocaleDateString('en-GB');
+    }
+
+    if (typeof val === 'string') {
+      const directDate = new Date(val);
+      if (!Number.isNaN(directDate.getTime())) {
+        return directDate.toLocaleDateString('en-GB');
+      }
+
+      const normalized = val
+        .replace(/,/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const parts = normalized.split(' ');
+      if (parts.length === 3) {
+        const [dayRaw, monthRaw, yearRaw] = parts;
+        const monthMap: Record<string, number> = {
+          jan: 0,
+          feb: 1,
+          mar: 2,
+          apr: 3,
+          may: 4,
+          jun: 5,
+          jul: 6,
+          aug: 7,
+          sep: 8,
+          oct: 9,
+          nov: 10,
+          dec: 11,
+        };
+        const day = Number(dayRaw);
+        const year = Number(yearRaw);
+        const month = monthMap[monthRaw.slice(0, 3).toLowerCase()];
+        if (!Number.isNaN(day) && !Number.isNaN(year) && month !== undefined) {
+          return new Date(year, month, day).toLocaleDateString('en-GB');
+        }
+      }
+    }
+
     return String(val);
   };
 
@@ -120,7 +166,9 @@ export const BookingPage = ({ setView, globalLang }: { setView: (view: any, id?:
                           </h4>
                           <span className="zen-booking-no">{item.bookingNum || item.bookNum}</span>
                         </div>
-                        <p className="zen-date-normal">{safeDate(item.date)}</p>
+                        <p className="zen-date-normal">
+                          {isTransport ? safeSlashDate(item.date) : safeDate(item.date)}
+                        </p>
                         <p className="zen-description">
                           {item.type === 'transport' ? item.plateNum : item.details}
                         </p>
