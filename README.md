@@ -3,9 +3,7 @@
 
 **Team Name:** Code & Coffee · **Domain:** Domain 1
 
-<img src="my-react-app/src/assets/zentravel_logo.png" alt="ZenTravel" width="420" />
-
-#  ZenTravel
+<img src="logo.jpg" alt="ZenTravel" width="420" />
 
 **AI-driven travel disruption recovery, smart trip planning, and seamless booking management.**
 
